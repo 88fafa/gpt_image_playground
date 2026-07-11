@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { useVersionCheck } from '../hooks/useVersionCheck'
 import { useTooltip } from '../hooks/useTooltip'
-import { dismissAllTooltips } from '../lib/tooltipDismiss'
 import ViewportTooltip from './ViewportTooltip'
 import HistoryModal from './HistoryModal'
 import { useFavoriteCollectionTitle } from './FavoriteCollections'
@@ -81,7 +80,6 @@ export default function Header() {
     }
   }, [appMode, agentMobileHeaderVisible])
 
-  const installTooltip = useTooltip()
   const settingsTooltip = useTooltip()
 
   useEffect(() => {
@@ -121,8 +119,8 @@ export default function Header() {
       const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
       if (isIos) {
         setConfirmDialog({
-          title: '安装为应用',
-          message: '在 Safari 浏览器中，点击底部「分享」按钮，选择「添加到主屏幕」即可安装此应用。',
+          title: '转为 APP 应用',
+          message: '安装到手机桌面后，可以像普通 App 一样直接打开使用。\n\n在 Safari 浏览器中，点击底部「分享」按钮，选择「添加到主屏幕」。',
           showCancel: false,
           confirmText: '我知道了',
           icon: 'info',
@@ -130,8 +128,8 @@ export default function Header() {
         })
       } else {
         setConfirmDialog({
-          title: '安装为应用',
-          message: '请在浏览器的菜单中选择「添加到主屏幕」或「安装应用」。\n\n（如果在微信等内置浏览器中，请先在外部浏览器打开）',
+          title: '转为 APP 应用',
+          message: '安装到手机桌面后，可以像普通 App 一样直接打开使用。\n\n请在浏览器菜单中选择「添加到主屏幕」或「安装应用」。\n\n（如果在微信等内置浏览器中，请先在外部浏览器打开）',
           showCancel: false,
           confirmText: '我知道了',
           icon: 'info',
@@ -250,23 +248,17 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {!isPwaInstalled && (
-              <div
-                className="relative"
-                {...installTooltip.handlers}
-              >
+              <div className="relative">
                 <button
                   onClick={() => {
-                    dismissAllTooltips()
                     handleInstallClick()
                   }}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
-                  aria-label="安装为应用"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-900"
+                  aria-label="转为 APP 应用"
                 >
-                  <InstallIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <InstallIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <span>转为 APP 应用</span>
                 </button>
-                <ViewportTooltip visible={installTooltip.visible} className="whitespace-nowrap">
-                  安装为应用
-                </ViewportTooltip>
               </div>
             )}
             <div
