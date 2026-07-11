@@ -254,3 +254,22 @@ export function calculateImageSize(tier: SizeTier, ratio: string) {
   if (bestPixels === 0) return null
   return `${bestWidth}x${bestHeight}`
 }
+
+export function getImageSizePreset(size: string): { tier: SizeTier; ratio: string } | null {
+  const normalized = normalizeImageSize(size)
+  const ratios = ['1:1', '3:2', '2:3', '16:9', '9:16', '4:3', '3:4', '21:9']
+  const tiers: SizeTier[] = ['1K', '2K', '4K']
+
+  for (const tier of tiers) {
+    for (const ratio of ratios) {
+      if (calculateImageSize(tier, ratio) === normalized) return { tier, ratio }
+    }
+  }
+  return null
+}
+
+export function appendImageSizeParamsToPrompt(prompt: string, size: string) {
+  const preset = getImageSizePreset(size)
+  if (!preset) return prompt
+  return `${prompt.trim()}\n\n图片参数：比例${preset.ratio}  ${preset.tier}`
+}

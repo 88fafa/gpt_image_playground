@@ -19,6 +19,7 @@ export default function InputParamsPanel({
   isFalProvider,
   isFalTextToImage,
   displaySize,
+  displayImageParams,
   qualityOptions,
   selectClass,
   transparentOutputAvailable,
@@ -59,6 +60,7 @@ export default function InputParamsPanel({
   isFalProvider: boolean
   isFalTextToImage: boolean
   displaySize: string
+  displayImageParams: string
   qualityOptions: Array<{ label: string; value: string }>
   selectClass: string
   transparentOutputAvailable: boolean
@@ -93,7 +95,7 @@ export default function InputParamsPanel({
   onOpenSizePicker: () => void
 }) {
   return (
-    <div className={`grid ${cols} gap-2 text-xs flex-1`}>
+    <div className={`simple-input-params grid ${cols} gap-2 text-xs flex-1`}>
       <label
         className="relative flex flex-col gap-0.5"
         onMouseEnter={sizeHint.show}
@@ -103,14 +105,14 @@ export default function InputParamsPanel({
         onTouchCancel={sizeHint.hide}
         onClick={sizeHint.show}
       >
-        <span className="text-gray-400 dark:text-gray-500 ml-1">尺寸</span>
+        <span className="text-gray-400 dark:text-gray-500 ml-1">设置图片参数</span>
         <button
           type="button"
           onClick={() => { dismissAllTooltips(); onOpenSizePicker() }}
           className="px-3 py-1.5 rounded-xl border border-gray-200/60 dark:border-white/[0.08] bg-white/50 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06] focus:outline-none text-xs text-left transition-all duration-200 shadow-sm font-mono"
-          title="选择尺寸"
+          title="设置图片参数"
         >
-          {displaySize}
+          {displayImageParams}
         </button>
         <ButtonTooltip
           visible={isFalTextToImage && sizeHint.visible}

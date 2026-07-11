@@ -460,8 +460,8 @@ export default function SettingsModal() {
   }, [activeProfile.id, activeProfile.timeout])
 
   useEffect(() => {
-    if (showSettings && settingsTabRequest) setActiveTab(settingsTabRequest)
-  }, [settingsTabRequest, showSettings])
+    if (showSettings) setActiveTab('api')
+  }, [showSettings, settingsTabRequest])
 
   const updateProfileMenuMaxHeight = useCallback(() => {
     if (!profileMenuTriggerRef.current) return
@@ -1195,7 +1195,7 @@ export default function SettingsModal() {
 
         <div className="flex flex-1 min-h-0 flex-col sm:flex-row">
           {/* Sidebar */}
-          <div className="w-full sm:w-48 shrink-0 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02]">
+          <div className="settings-sidebar hidden">
             <nav className="flex-1 overflow-x-auto sm:overflow-y-auto custom-scrollbar p-3 space-x-1 sm:space-x-0 sm:space-y-1 flex sm:flex-col">
               <button
                 onClick={() => setActiveTab('api')}
@@ -1276,7 +1276,7 @@ export default function SettingsModal() {
             )}
             
             {activeTab === 'api' && (
-              <div className="space-y-4">
+              <div className="settings-api-simple space-y-4">
                 <div>
                   <div className="mb-1.5 flex items-center gap-1.5">
                     <span className="block text-sm text-gray-600 dark:text-gray-300">当前配置</span>
@@ -1461,16 +1461,18 @@ export default function SettingsModal() {
                 </div>
 
               {/* 1. 配置名称 */}
-              <label className="block">
-                <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">配置名称</span>
-                <input
-                  value={activeProfile.name}
-                  onChange={(e) => updateActiveProfile({ name: e.target.value })}
-                  onBlur={(e) => commitActiveProfilePatch({ name: e.target.value })}
-                  type="text"
-                  className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                />
-              </label>
+              {!defaultConfigOnly && (
+                <label className="block">
+                  <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">配置名称</span>
+                  <input
+                    value={activeProfile.name}
+                    onChange={(e) => updateActiveProfile({ name: e.target.value })}
+                    onBlur={(e) => commitActiveProfilePatch({ name: e.target.value })}
+                    type="text"
+                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:ring-blue-500/50"
+                  />
+                </label>
+              )}
 
               {/* 2. 服务商类型 */}
               <div className="block">
@@ -1538,7 +1540,7 @@ export default function SettingsModal() {
               )}
 
               {/* 5. API Key */}
-              <div className="block">
+              <div className="settings-api-key block">
                 <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">API Key</span>
                 <div className="relative">
                   <input
@@ -1569,9 +1571,6 @@ export default function SettingsModal() {
                       </svg>
                     )}
                   </button>
-                </div>
-                <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
-                  支持通过查询参数覆盖：<code className="bg-gray-100 dark:bg-white/[0.06] px-1 py-0.5 rounded">?apiKey=</code>
                 </div>
               </div>
 

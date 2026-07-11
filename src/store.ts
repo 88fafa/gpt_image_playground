@@ -20,6 +20,7 @@ import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_PARAMS } from './types'
 import { DEFAULT_SETTINGS, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, mergeImportedSettings, normalizeSettings, validateApiProfile } from './lib/apiProfiles'
 import { dismissAllTooltips } from './lib/tooltipDismiss'
 import { remapImageMentionsForOrder, replaceImageMentionsForApi } from './lib/promptImageMentions'
+import { appendImageSizeParamsToPrompt } from './lib/size'
 import {
   CURRENT_THUMBNAIL_VERSION,
   getAllTasks,
@@ -4705,10 +4706,11 @@ async function executeTask(taskId: string) {
     const requestPrompt = task.transparentOutput && task.transparentPrompt
       ? task.transparentPrompt
       : task.prompt
+    const requestPromptWithParams = appendImageSizeParamsToPrompt(requestPrompt, task.params.size)
 
     const result = await callImageApi({
       settings: requestSettings,
-      prompt: replaceImageMentionsForApi(requestPrompt, inputDataUrls.length),
+      prompt: replaceImageMentionsForApi(requestPromptWithParams, inputDataUrls.length),
       params: task.params,
       inputImageDataUrls: inputDataUrls,
       maskDataUrl,
