@@ -19,6 +19,30 @@ function loadDevProxyConfig() {
 
 export default defineConfig(({ command }) => {
   const devProxyConfig = command === 'serve' ? loadDevProxyConfig() : null
+  const asyncImageApiEnabled = process.env.VITE_ASYNC_IMAGE_API_ENABLED === 'true'
+  const asyncImageApiTarget = process.env.ASYNC_IMAGE_API_URL || 'http://127.0.0.1:8787'
+  const proxy = {
+    ...(devProxyConfig?.enabled
+      ? {
+          [devProxyConfig.prefix]: {
+            target: devProxyConfig.target,
+            changeOrigin: devProxyConfig.changeOrigin,
+            secure: devProxyConfig.secure,
+            rewrite: (path: string) =>
+              path.replace(
+                new RegExp(`^${devProxyConfig.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+                '',
+              ),
+          },
+        }
+      : {}),
+    ...(asyncImageApiEnabled
+      ? {
+          '/v1/images': { target: asyncImageApiTarget, changeOrigin: true },
+          '/healthz': { target: asyncImageApiTarget, changeOrigin: true },
+        }
+      : {}),
+  }
 
   return {
     plugins: [react()],
@@ -29,21 +53,7 @@ export default defineConfig(({ command }) => {
     },
     server: {
       host: true,
-      proxy:
-        devProxyConfig?.enabled
-          ? {
-              [devProxyConfig.prefix]: {
-                target: devProxyConfig.target,
-                changeOrigin: devProxyConfig.changeOrigin,
-                secure: devProxyConfig.secure,
-                rewrite: (path) =>
-                  path.replace(
-                    new RegExp(`^${devProxyConfig.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-                    '',
-                  ),
-              },
-            }
-          : undefined,
+      proxy: Object.keys(proxy).length ? proxy : undefined,
     },
   }
 })

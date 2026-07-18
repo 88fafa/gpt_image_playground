@@ -271,5 +271,6 @@ export function getImageSizePreset(size: string): { tier: SizeTier; ratio: strin
 export function appendImageSizeParamsToPrompt(prompt: string, size: string) {
   const preset = getImageSizePreset(size)
   if (!preset) return prompt
-  return `${prompt.trim()}\n\n图片参数：比例${preset.ratio}  ${preset.tier}`
+  const withoutTrailingImageParams = prompt.trim().replace(/\s*图片参数：比例[^\r\n]*\s*$/, '').trim()
+  return `${withoutTrailingImageParams}\n\n图片参数：比例${preset.ratio}  ${preset.tier}`
 }

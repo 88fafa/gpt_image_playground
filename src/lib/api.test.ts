@@ -604,6 +604,63 @@ describe('callImageApi', () => {
     )
   })
 
+  it('uses the built-in async image task API when enabled for Responses streaming', async () => {
+    vi.stubEnv('VITE_API_PROXY_AVAILABLE', 'true')
+    vi.stubEnv('VITE_ASYNC_IMAGE_API_ENABLED', 'true')
+    vi.useFakeTimers()
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        task_id: 'imgtask_1',
+        status: 'queued',
+      }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '25' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        task_id: 'imgtask_1',
+        status: 'completed',
+        result: {
+          data: [{ b64_json: 'aW1hZ2U=' }],
+        },
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+
+    const resultPromise = callImageApi({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        apiKey: 'test-key',
+        apiMode: 'responses',
+        apiProxy: true,
+        streamImages: true,
+      },
+      prompt: 'prompt',
+      params: { ...DEFAULT_PARAMS, n: 2 },
+      inputImageDataUrls: [],
+    })
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(24_999)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    const result = await resultPromise
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/images/generations', expect.any(Object))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/images/tasks/imgtask_1', expect.objectContaining({ method: 'GET' }))
+    const [, init] = fetchMock.mock.calls[0]
+    const body = JSON.parse(String((init as RequestInit).body))
+    expect(body).toMatchObject({
+      prompt: 'prompt\n\n图片参数：比例1:1  1K',
+      n: 2,
+      response_format: 'url',
+    })
+    expect(result.images).toEqual(['data:image/png;base64,aW1hZ2U='])
+  })
+
   it('uses the same-origin API proxy path when API proxy is enabled and base URL is empty', async () => {
     vi.stubEnv('VITE_API_PROXY_AVAILABLE', 'true')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({

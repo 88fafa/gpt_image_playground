@@ -1,10 +1,11 @@
 {
   "name": "gpt-image-playground",
   "private": true,
-  "version": "0.6.12",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "async:image-api": "node server/async-image-api.mjs",
     "mock:api": "node scripts/mock-image-api.mjs",
     "build": "tsc -b && vite build",
     "deploy:cf": "npm run build && wrangler deploy",
@@ -27,7 +28,7 @@
   },
   "overrides": {
     "mdast-util-gfm-autolink-literal": "2.0.0",
-    "dompurify": "^3.4.7"
+    "dompurify": "^3.4.11"
   },
   "devDependencies": {
     "@types/react": "^19.1.2",

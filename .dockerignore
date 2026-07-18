@@ -4,4 +4,13 @@ dist
 .gitignore
 *.md
 Dockerfile
+data/
+logs/
+dev-proxy.config.json
+.wrangler/
+.env
+.env.*
+*.pem
+*.key
+key.txt
 .dockerignore

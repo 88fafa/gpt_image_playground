@@ -369,7 +369,7 @@ describe('mask draft lifecycle in store actions', () => {
     }
 
     expect(callImageApi).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: 'transparent:单主体贴纸素材',
+      prompt: expect.stringContaining('transparent:单主体贴纸素材'),
       params: expect.objectContaining({
         output_format: 'png',
         output_compression: null,

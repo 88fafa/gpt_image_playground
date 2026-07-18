@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calculateImageSize } from './size'
+import { DEFAULT_PARAMS } from '../types'
+import { appendImageSizeParamsToPrompt, calculateImageSize, getImageSizePreset } from './size'
 
 describe('calculateImageSize', () => {
   it('uses common 16:9 display resolutions for the built-in tiers', () => {
@@ -16,5 +17,14 @@ describe('calculateImageSize', () => {
 
   it('falls back to budget-based sizing for custom ratios', () => {
     expect(calculateImageSize('2K', '5:4')).toBe('2288x1824')
+  })
+
+  it('defaults to a 1K square and keeps the prompt suffix singular', () => {
+    expect(DEFAULT_PARAMS.size).toBe('1024x1024')
+    expect(getImageSizePreset(DEFAULT_PARAMS.size)).toEqual({ tier: '1K', ratio: '1:1' })
+    expect(appendImageSizeParamsToPrompt(
+      'product photo\n\n图片参数：比例16:9  1K',
+      DEFAULT_PARAMS.size,
+    )).toBe('product photo\n\n图片参数：比例1:1  1K')
   })
 })
