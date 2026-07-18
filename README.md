@@ -74,12 +74,13 @@ docker run -d \
   -e SHOW_DEFAULT_CONFIG_ONLY=true \
   -e DEFAULT_API_URL="https://your-api.example.com/v1?apiMode=responses&streamImages=true&streamPartialImages=2&model=gpt-5.5" \
   -e ENABLE_ASYNC_IMAGE_API=true \
+  -e ASYNC_IMAGE_PUBLIC_BASE_URL=https://your-playground.example.com \
   -e ASYNC_IMAGE_WORKER_CONCURRENCY=10 \
   -e ASYNC_IMAGE_QUEUE_MAX=100 \
   ghcr.io/88fafa/gpt_image_playground:latest
 ```
 
-`ASYNC_IMAGE_WORKER_CONCURRENCY` 控制该容器同时请求上游的流式任务总数；`ASYNC_IMAGE_QUEUE_MAX` 只限制等待中的任务。持久化卷会在容器重启后保留任务元数据和结果图片，结果在默认 24 小时保留期结束后清理。
+`ASYNC_IMAGE_PUBLIC_BASE_URL` 必须填写用户访问 Playground 的 HTTPS 公网域名，例如 `https://image.example.com`。它确保异步结果链接始终返回正确的 HTTPS 地址，尤其适用于 TLS 由外层 Nginx、Caddy 或 CDN 终止的部署。`ASYNC_IMAGE_WORKER_CONCURRENCY` 控制该容器同时请求上游的流式任务总数；`ASYNC_IMAGE_QUEUE_MAX` 只限制等待中的任务。持久化卷会在容器重启后保留任务元数据和结果图片，结果在默认 24 小时保留期结束后清理。
 
 异步 API 包括 `POST /v1/images/generations`、`POST /v1/images/edits`、`GET /v1/images/tasks/{task_id}` 和 `GET /v1/images/files/{file}`。完整请求和响应示例、全部环境变量、轮询策略、保留策略及反向代理说明见 [docs/async-image-api-guide.md](docs/async-image-api-guide.md)。
 

@@ -152,6 +152,7 @@ docker run -d \
   -e API_PROXY_URL=https://your-api.example.com/v1 \
   -e LOCK_API_PROXY=true \
   -e ENABLE_ASYNC_IMAGE_API=true \
+  -e ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com \
   -e ASYNC_IMAGE_WORKER_CONCURRENCY=10 \
   -e ASYNC_IMAGE_QUEUE_MAX=100 \
   -e ASYNC_IMAGE_QUEUE_MAX_INPUT_BYTES=67108864 \
@@ -176,12 +177,12 @@ docker run -d \
 | `ASYNC_IMAGE_TASK_TTL_SECONDS` | `86400` | Completed/failed task and image retention; 24 hours |
 | `ASYNC_IMAGE_TASK_CLEANUP_INTERVAL_SECONDS` | `300` | Expired task cleanup interval |
 | `ASYNC_IMAGE_TASK_TIMEOUT_SECONDS` | `1800` | Per-task upstream stream deadline; prevents a worker from hanging forever |
-| `ASYNC_IMAGE_PUBLIC_BASE_URL` | empty | Optional externally visible base URL used in image result URLs |
+| `ASYNC_IMAGE_PUBLIC_BASE_URL` | empty | Required for public HTTPS deployments; the external Playground base URL used in image result URLs |
 | `UPSTREAM_RESPONSES_BASE_URL` | empty | Direct upstream base URL; normally leave empty when `API_PROXY_URL` is set |
 | `UPSTREAM_API_KEY` | empty | Optional fixed upstream key. When empty, the caller's `Authorization` header is forwarded |
 | `UPSTREAM_RESPONSES_MODEL` | empty | Optional model override. When empty, the request `model` is used |
 
-For a reverse proxy or TLS terminator in front of the container, set `ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com` so returned URLs always use the public hostname. Nginx forwards `/v1/images/...` and `/healthz` to the local Node service; existing `/api-proxy/...` behavior remains the upstream sub2api proxy.
+For a reverse proxy or TLS terminator in front of the container, set `ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com` so returned URLs always use the public HTTPS hostname. This is the recommended production configuration and prevents mixed-content image downloads. The bundled Nginx also preserves incoming `X-Forwarded-Proto` and `X-Forwarded-Host` values as a fallback. Nginx forwards `/v1/images/...` and `/healthz` to the local Node service; existing `/api-proxy/...` behavior remains the upstream sub2api proxy.
 
 ## Storage and Retention
 

@@ -408,10 +408,23 @@ describe('async image api worker helpers', () => {
         body: JSON.stringify({ model: 'gpt-5.5', prompt: 'test', response_format: 'url' }),
       })
       expect(submit.status).toBe(202)
+      expect(submit.headers.get('Access-Control-Allow-Origin')).toBe('*')
       const task = await submit.json()
       const result = await waitForTask(baseUrl, task.task_id)
       expect(result.result.data[0].url).toMatch(/\/v1\/images\/files\/imgtask_.*\.png$/)
-      expect(await fetch(result.result.data[0].url).then((response) => response.text())).toBe('image')
+      const imageResponse = await fetch(result.result.data[0].url)
+      expect(imageResponse.headers.get('Access-Control-Allow-Origin')).toBe('*')
+      expect(await imageResponse.text()).toBe('image')
+
+      const forwardedResultResponse = await fetch(`${baseUrl}/v1/images/tasks/${task.task_id}`, {
+        headers: {
+          'X-Forwarded-Proto': 'https, http',
+          'X-Forwarded-Host': 'image.example.com, internal.example.com',
+        },
+      })
+      expect(forwardedResultResponse.headers.get('Access-Control-Allow-Origin')).toBe('*')
+      const forwardedResult = await forwardedResultResponse.json()
+      expect(forwardedResult.result.data[0].url).toMatch(/^https:\/\/image\.example\.com\/v1\/images\/files\//)
       const persisted = await readFile(join(storageDir, 'tasks', `${task.task_id}.json`), 'utf8')
       expect(persisted).not.toContain('"prompt"')
       expect(persisted).not.toContain('aW1hZ2U=')

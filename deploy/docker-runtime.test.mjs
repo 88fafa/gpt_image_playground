@@ -19,6 +19,8 @@ describe('Docker async-image runtime configuration', () => {
     expect(source).toContain('location /api-proxy/')
     expect(source).toContain('location /v1/images/')
     expect(source).toContain('client_max_body_size ${ASYNC_IMAGE_NGINX_MAX_BODY_SIZE};')
+    expect(source).toContain('map $http_x_forwarded_proto $async_image_forwarded_proto')
+    expect(source).toContain('proxy_set_header X-Forwarded-Proto $async_image_forwarded_proto;')
   })
 
   it('uses a supervised worker and excludes local build artifacts', async () => {

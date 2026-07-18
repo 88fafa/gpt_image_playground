@@ -66,6 +66,7 @@ function jsonResponse(res, statusCode, payload, headers = {}) {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store, private, max-age=0',
     Pragma: 'no-cache',
+    'Access-Control-Allow-Origin': '*',
     ...headers,
   })
   res.end(body)
@@ -920,8 +921,9 @@ export function createTaskManager(options = {}) {
 function publicImageUrl(req, file) {
   const configuredBaseUrl = String(process.env.ASYNC_IMAGE_PUBLIC_BASE_URL || '').trim().replace(/\/+$/, '')
   if (configuredBaseUrl) return `${configuredBaseUrl}/v1/images/files/${encodeURIComponent(file)}`
-  const protocol = getHeader(req, 'x-forwarded-proto') || 'http'
-  const host = getHeader(req, 'x-forwarded-host') || getHeader(req, 'host') || 'localhost'
+  const forwardedProtocol = String(getHeader(req, 'x-forwarded-proto') || '').split(',')[0].trim().toLowerCase()
+  const protocol = forwardedProtocol === 'https' ? 'https' : 'http'
+  const host = String(getHeader(req, 'x-forwarded-host') || getHeader(req, 'host') || 'localhost').split(',')[0].trim()
   return `${protocol}://${host}/v1/images/files/${encodeURIComponent(file)}`
 }
 
@@ -1050,6 +1052,7 @@ export function createAsyncImageApiServer(options = {}) {
           'Content-Length': image.data.length,
           'Cache-Control': 'private, max-age=3600',
           'X-Content-Type-Options': 'nosniff',
+          'Access-Control-Allow-Origin': '*',
         })
         res.end(image.data)
         return
