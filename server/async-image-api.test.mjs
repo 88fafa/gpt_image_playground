@@ -106,6 +106,30 @@ describe('async image api worker helpers', () => {
     })
   })
 
+  it('preserves the order of multiple edit images in the Responses input', () => {
+    const body = buildResponsesRequest({
+      model: 'gpt-5.5',
+      prompt: 'combine these references',
+      size: '1536x1024',
+      quality: 'medium',
+      output_format: 'png',
+      output_compression: null,
+      moderation: 'auto',
+      n: 1,
+      partial_images: 1,
+      allow_prompt_rewrite: false,
+      images: [
+        'data:image/png;base64,Zmlyc3Q=',
+        'data:image/png;base64,c2Vjb25k',
+      ],
+    })
+
+    expect(body.input[0].content.slice(1)).toEqual([
+      { type: 'input_image', image_url: 'data:image/png;base64,Zmlyc3Q=' },
+      { type: 'input_image', image_url: 'data:image/png;base64,c2Vjb25k' },
+    ])
+  })
+
   it('adds the requested image ratio and tier once at the end of an upstream prompt', () => {
     const prompt = appendImageSizeParamsToPrompt('a square product photo\n\n图片参数：比例16:9  1K', '1024x1024')
     expect(prompt).toBe('a square product photo\n\n图片参数：比例1:1  1K')

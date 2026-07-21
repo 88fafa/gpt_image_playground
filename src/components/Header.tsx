@@ -4,8 +4,10 @@ import { useVersionCheck } from '../hooks/useVersionCheck'
 import { useTooltip } from '../hooks/useTooltip'
 import ViewportTooltip from './ViewportTooltip'
 import HistoryModal from './HistoryModal'
+import AsyncImageApiGuideModal from './AsyncImageApiGuideModal'
+import { readRuntimeEnv } from '../lib/runtimeEnv'
 import { useFavoriteCollectionTitle } from './FavoriteCollections'
-import { EditIcon, HistoryIcon, InstallIcon, SettingsIcon } from './icons'
+import { CodeIcon, EditIcon, HistoryIcon, InstallIcon, SettingsIcon } from './icons'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -36,6 +38,8 @@ export default function Header() {
   const [hintVisible, setHintVisible] = useState(false)
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up')
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [showAsyncApiGuide, setShowAsyncApiGuide] = useState(false)
+  const asyncImageApiEnabled = readRuntimeEnv(import.meta.env.VITE_ASYNC_IMAGE_API_ENABLED) === 'true'
   const historyButtonRef = useRef<HTMLButtonElement>(null)
   const createConversation = useStore((s) => s.createAgentConversation)
 
@@ -247,6 +251,35 @@ export default function Header() {
             </button>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <div
+              className="relative"
+              {...settingsTooltip.handlers}
+            >
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="inline-flex h-9 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900"
+                aria-label="设置"
+                title="设置"
+              >
+                <SettingsIcon className="h-5 w-5" />
+              </button>
+              <ViewportTooltip visible={settingsTooltip.visible} className="whitespace-nowrap">
+                设置
+              </ViewportTooltip>
+            </div>
+            {asyncImageApiEnabled && (
+              <button
+                type="button"
+                onClick={() => setShowAsyncApiGuide(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-900"
+                aria-label="异步生图 API 使用说明"
+                title="异步生图 API 使用说明"
+              >
+                <CodeIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                <span className="hidden sm:inline">异步生图 API 说明</span>
+              </button>
+            )}
             {!isPwaInstalled && (
               <div className="relative">
                 <button
@@ -261,21 +294,6 @@ export default function Header() {
                 </button>
               </div>
             )}
-            <div
-              className="relative"
-              {...settingsTooltip.handlers}
-            >
-              <button
-                onClick={() => setShowSettings(true)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
-                aria-label="设置"
-              >
-                <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </button>
-              <ViewportTooltip visible={settingsTooltip.visible} className="whitespace-nowrap">
-                设置
-              </ViewportTooltip>
-            </div>
           </div>
         </div>
         <div className={`hidden safe-area-x sm:hidden overflow-hidden transition-all duration-300 ease-in-out ${appMode === 'gallery' && scrollDirection === 'down' ? 'max-h-0 opacity-0 pb-0' : 'max-h-20 opacity-100 pb-2'}`}>
@@ -297,6 +315,7 @@ export default function Header() {
           </div>
         </div>
       </header>
+      {showAsyncApiGuide && <AsyncImageApiGuideModal onClose={() => setShowAsyncApiGuide(false)} />}
       
       {/* Hint for sliding down */}
       <div className={`fixed top-0 left-0 right-0 z-30 flex justify-center pointer-events-none transition-all duration-300 ease-in-out sm:hidden ${appMode === 'agent' && hintVisible && !agentMobileHeaderVisible ? 'translate-y-[env(safe-area-inset-top,0px)] opacity-100' : '-translate-y-full opacity-0'}`}>

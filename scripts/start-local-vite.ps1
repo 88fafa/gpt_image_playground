@@ -6,6 +6,7 @@ $nodeBin = 'C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\d
 
 $env:PATH = "$nodeBin;$env:PATH"
 $env:VITE_ASYNC_IMAGE_API_ENABLED = 'true'
+$env:VITE_ASYNC_IMAGE_PUBLIC_BASE_URL = if ($env:ASYNC_IMAGE_PUBLIC_BASE_URL) { $env:ASYNC_IMAGE_PUBLIC_BASE_URL } else { '' }
 $env:VITE_API_PROXY_AVAILABLE = 'true'
 $env:VITE_API_PROXY_LOCKED = 'true'
 $env:VITE_SHOW_DEFAULT_CONFIG_ONLY = 'true'

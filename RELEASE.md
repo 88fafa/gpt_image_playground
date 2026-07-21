@@ -1,3 +1,12 @@
+## v0.7.2 (2026-07-21)
+
+### Async Image API Guide
+
+- Added an async image API guide button that is shown only when the async service is enabled.
+- Added runtime public Base URL display and copy-all instructions for image generation and editing Skills.
+- Documented multipart `image[]` uploads, JSON multi-image arrays, polling, and final prompt ratio handling.
+- Added coverage for preserving the order of multiple edit images in upstream Responses requests.
+
 ## v0.7.1 (2026-07-18)
 
 ### Fixes

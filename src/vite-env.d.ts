@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_API_PROXY_AVAILABLE?: string
   readonly VITE_API_PROXY_LOCKED?: string
   readonly VITE_ASYNC_IMAGE_API_ENABLED?: string
+  readonly VITE_ASYNC_IMAGE_PUBLIC_BASE_URL?: string
   readonly VITE_DOCKER_DEPLOYMENT?: string
   readonly VITE_DOCKER_LEGACY_API_URL_USED?: string
   readonly VITE_SHOW_DEFAULT_CONFIG_ONLY?: string

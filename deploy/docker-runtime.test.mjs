@@ -31,10 +31,18 @@ describe('Docker async-image runtime configuration', () => {
     ])
 
     expect(dockerfile).toContain('supervisor')
+    expect(dockerfile).toContain('VITE_ASYNC_IMAGE_PUBLIC_BASE_URL=__VITE_ASYNC_IMAGE_PUBLIC_BASE_URL_PLACEHOLDER__')
     expect(dockerfile).toContain('HEALTHCHECK')
     expect(supervisor).toContain('[program:async-image-api]')
     expect(ignored).toContain('data/')
     expect(ignored).toContain('logs/')
     expect(ignored).toContain('dev-proxy.config.json')
+  })
+
+  it('injects the configured public async-image URL into the frontend', async () => {
+    const source = await readDeployFile('inject-api-url.sh')
+
+    expect(source).toContain('__VITE_ASYNC_IMAGE_PUBLIC_BASE_URL_PLACEHOLDER__')
+    expect(source).toContain('ASYNC_IMAGE_PUBLIC_BASE_URL_ESCAPED')
   })
 })
