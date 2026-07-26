@@ -1,34 +1,38 @@
-# Async Image API Guide
+# 异步生图 API 使用说明
 
-This service accepts standard OpenAI-compatible image generation and edit requests, immediately returns a task, and lets the caller poll for the final image. It is designed for this upstream path:
+本服务提供兼容 OpenAI Images API 的异步图片生成和编辑接口：提交任务后立即返回 `task_id`，调用方再查询任务取得最终图片。上游调用链如下：
 
 ```text
-client or Playground -> Async Image API -> /v1/responses (stream:true) -> sub2api -> image model
+调用方或 Playground -> 异步生图 API -> /v1/responses（stream: true）-> sub2api -> 图片模型
 ```
 
-The async service consumes the upstream SSE stream until the final `image_generation_call` output arrives. It writes each completed image to disk, writes task metadata atomically, and returns the final image after polling. It does not persist API keys, prompts, input images, or upstream base64 output after a task is finalized.
+异步 worker 会持续消费上游 SSE 流，直到收到最终 `image_generation_call` 图片结果。完成后的图片写入磁盘，任务元数据以原子方式保存；API Key、提示词、输入图片和上游 Base64 输出不会在任务结束后持久化。
 
-For every recognized project image preset, the worker ensures the final upstream prompt ends with the requested ratio and tier, for example `图片参数：比例1:1  1K`. A trailing older image-parameter suffix is replaced, never duplicated.
+## 公开模型名与内部模型
 
-## Endpoints
+对外异步 API 的 `model` **统一使用 `gpt-image-2`**。无论是生成、编辑、curl 示例、第三方客户端还是智能体 Skill，都应传递此模型名。
 
-| Method | Path | Purpose |
+容器内部会将任务转为 sub2api 兼容的 `/v1/responses` 流式 `image_generation` 工具调用，默认内部上游模型为 `gpt-5.5`，可通过 `UPSTREAM_RESPONSES_MODEL` 覆盖。`gpt-5.5` 是内部实现配置，**不是**对外异步 API 的 `model` 值。
+
+对于项目识别的每个图片尺寸预设，worker 会保证最终上游提示词以目标比例和清晰度结尾，例如 `图片参数：比例1:1  1K`。如果提示词末尾已有旧的图片参数，会替换而不是重复追加。
+
+## 接口列表
+
+| 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| GET | `/healthz` | Readiness, worker state, TTL, and endpoint discovery |
-| POST | `/v1/images/generations` | Submit a generation task |
-| POST | `/v1/images/edits` | Submit an edit task using multipart form data |
-| GET | `/v1/images/tasks/{task_id}` | Poll task state and final result |
-| GET | `/v1/images/files/{file}` | Download a temporary stored result image |
+| `POST` | `/v1/images/generations` | 提交异步图片生成任务 |
+| `POST` | `/v1/images/edits` | 提交异步图片编辑任务 |
+| `GET` | `/v1/images/tasks/{task_id}` | 查询任务状态与结果 |
+| `GET` | `/v1/images/files/{file}` | 下载已完成任务的图片文件 |
+| `GET` | `/healthz` | 服务健康检查 |
 
-The submit endpoints return HTTP `202`, `Location`, a `Retry-After` value chosen from the task state, a `task_id`, and a relative `poll_url`. Task states are `queued`, `processing`, `completed`, and `failed`. Clients should honor `Retry-After`, including the value on the initial `202` response. Processing uses a completion-window schedule: 25 seconds until 50 seconds, 15 seconds until 65 seconds, 5 seconds from 65 to 120 seconds, then 10, 30, and 60 seconds for increasingly long tasks. Queued tasks use 30-60 seconds based on queue position.
-
-## Health Check
+## 健康检查
 
 ```bash
 curl http://localhost:8010/healthz
 ```
 
-Example result:
+示例响应：
 
 ```json
 {
@@ -44,19 +48,13 @@ Example result:
   "max_request_bytes": 26214400,
   "task_ttl_seconds": 86400,
   "task_timeout_seconds": 1800,
-  "upstream_configured": true,
-  "endpoints": {
-    "generations": "POST /v1/images/generations",
-    "edits": "POST /v1/images/edits",
-    "tasks": "GET /v1/images/tasks/{task_id}",
-    "files": "GET /v1/images/files/{file}"
-  }
+  "upstream_configured": true
 }
 ```
 
-`status: ok` confirms that the local task store is ready. It does not make an upstream image request, so use one real generation request when checking upstream credentials or sub2api availability.
+`status: ok` 表示本地任务存储已就绪，不会实际请求上游。验证 API Key 或 sub2api 可用性时，请再提交一次真实生图任务。
 
-## Generate an Image
+## 图片生成
 
 ```bash
 curl -X POST http://localhost:8010/v1/images/generations \
@@ -65,7 +63,7 @@ curl -X POST http://localhost:8010/v1/images/generations \
   -H "Idempotency-Key: 9f7728b3-7b51-4c73-8b71-a-single-submit" \
   -d '{
     "model": "gpt-image-2",
-    "prompt": "A compact wooden cabin beside a clear lake at sunrise, detailed editorial photography",
+    "prompt": "湖边日出时的一座紧凑木屋，细节丰富的编辑摄影风格",
     "size": "1024x1024",
     "quality": "medium",
     "output_format": "png",
@@ -73,9 +71,9 @@ curl -X POST http://localhost:8010/v1/images/generations \
   }'
 ```
 
-`Idempotency-Key` is optional but strongly recommended for clients that retry a submit request. Only its SHA-256 hash is retained. Reusing the same key returns the original task instead of creating a duplicate image job.
+`Idempotency-Key` 为可选参数，但客户端可能重试提交时强烈建议设置。服务端只保存其 SHA-256 摘要；重复使用同一个 Key 会返回原任务，而不会重复创建、重复计费。
 
-Example `202` response:
+服务会立即返回 HTTP `202` 和 `task_id`：
 
 ```json
 {
@@ -91,13 +89,14 @@ Example `202` response:
 }
 ```
 
-Poll the task:
+提交成功后必须保存 `task_id`，不要重新 POST 同一个任务。应读取响应头 `Retry-After` 后再查询；任务处于 `queued` 或 `processing` 时继续按该值等待。网络中断、页面刷新或手机从后台恢复后，也只应使用原 `task_id` 查询，不要重新提交。
 
 ```bash
-curl http://localhost:8010/v1/images/tasks/imgtask_...
+curl http://localhost:8010/v1/images/tasks/imgtask_... \
+  -H "Authorization: Bearer YOUR_SUB2API_KEY"
 ```
 
-Default `response_format` is `url`; a completed task returns a service URL valid until task expiry:
+默认 `response_format` 为 `url`。完成后返回的服务图片链接在任务过期前有效：
 
 ```json
 {
@@ -107,7 +106,7 @@ Default `response_format` is `url`; a completed task returns a service URL valid
   "result": {
     "data": [
       {
-        "url": "http://localhost:8010/v1/images/files/imgtask_...-1.png",
+        "url": "https://image.example.com/v1/images/files/imgtask_...-1.png",
         "size": "1536x1024",
         "output_format": "png"
       }
@@ -116,19 +115,17 @@ Default `response_format` is `url`; a completed task returns a service URL valid
 }
 ```
 
-Use `"response_format": "b64_json"` when an existing OpenAI-compatible client requires Base64. The file is still persisted internally; the polling response reads it and returns `b64_json` instead of `url`.
+旧客户端需要 Base64 时可传递 `"response_format": "b64_json"`。文件仍会在服务端保存，查询响应会读取文件并返回 `b64_json`。Playground 内部使用 `url`，完成时再下载图片，以减小轮询响应体。
 
-The Playground requests `url` internally, then downloads the completed image URL. This keeps completed task polling small. External clients can continue to request `b64_json` when required. With Docker API proxy enabled, async calls go to the same container's `/v1/images/...` endpoint; the worker then forwards to the configured `API_PROXY_URL` as an upstream streaming `/v1/responses` request.
+## 图片编辑
 
-## Edit an Image
-
-Use `multipart/form-data`. `image`, `image[]`, or `images` are accepted. `mask` is optional.
+编辑接口使用 `multipart/form-data`。支持 `image`、重复的 `image[]` 或 `images` 字段；`mask` 可选。
 
 ```bash
 curl -X POST http://localhost:8010/v1/images/edits \
   -H "Authorization: Bearer YOUR_SUB2API_KEY" \
   -F "model=gpt-image-2" \
-  -F "prompt=Replace the sky with a bright, clear summer sky" \
+  -F "prompt=把天空替换为明亮晴朗的夏日蓝天" \
   -F "image[]=@input.png" \
   -F "mask=@mask.png" \
   -F "size=1024x1024" \
@@ -136,11 +133,11 @@ curl -X POST http://localhost:8010/v1/images/edits \
   -F "response_format=url"
 ```
 
-The worker translates this into one streaming Responses request using the `image_generation` tool with `action: "edit"`, input images, and an optional `input_image_mask`.
+多图编辑请重复使用 `image[]`；服务端会按上传顺序将图片传给模型。使用 JSON Data URL 时，`image`、`images` 和 `input_images` 都可传图片数组。worker 会将编辑请求转为一次带 `action: "edit"`、输入图片和可选 `input_image_mask` 的流式 Responses 工具调用。
 
-## Docker Configuration
+## Docker 部署
 
-Use a named volume or host directory. Without a mounted volume, Docker can retain an anonymous volume, but its lifecycle is harder to manage and task history may disappear when the container is replaced.
+请使用命名卷或主机目录保存 `/app/data`。不挂载卷时 Docker 也可能保留匿名卷，但更换容器后难以管理，任务历史可能丢失。
 
 ```bash
 docker run -d \
@@ -165,29 +162,31 @@ docker run -d \
   ghcr.io/88fafa/gpt_image_playground:latest
 ```
 
-| Environment variable | Default | Meaning |
+上例 `DEFAULT_API_URL` 里的 `model=gpt-5.5` 是 Playground 原有流式模式和内部上游调用配置；外部客户端调用 `/v1/images/generations` 与 `/v1/images/edits` 时仍必须使用 `model=gpt-image-2`。
+
+| 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `ENABLE_ASYNC_IMAGE_API` | `false` | Enables the front-end async route and starts the local API process |
-| `ASYNC_IMAGE_WORKER_CONCURRENCY` | `10` | Maximum simultaneous streaming `/v1/responses` requests sent to sub2api |
-| `ASYNC_IMAGE_QUEUE_MAX` | `100` | Maximum number of waiting tasks. Active workers are counted separately. |
-| `ASYNC_IMAGE_QUEUE_MAX_INPUT_BYTES` | `67108864` | Maximum total request memory retained by waiting tasks; protects edits with large Base64 inputs. |
-| `ASYNC_IMAGE_MAX_REQUEST_BYTES` | `26214400` | Maximum accepted JSON or multipart request body size (25 MiB). |
-| `ASYNC_IMAGE_NGINX_MAX_BODY_SIZE` | `25m` | Nginx request-size limit for `/v1/images/`; keep this aligned with the application request limit. |
-| `ASYNC_IMAGE_STORAGE_DIR` | `/app/data/async-image` | Task JSON and final image file directory |
-| `ASYNC_IMAGE_TASK_TTL_SECONDS` | `86400` | Completed/failed task and image retention; 24 hours |
-| `ASYNC_IMAGE_TASK_CLEANUP_INTERVAL_SECONDS` | `300` | Expired task cleanup interval |
-| `ASYNC_IMAGE_TASK_TIMEOUT_SECONDS` | `1800` | Per-task upstream stream deadline; prevents a worker from hanging forever |
-| `ASYNC_IMAGE_PUBLIC_BASE_URL` | empty | Required for public HTTPS deployments; the external Playground base URL used in image result URLs |
-| `UPSTREAM_RESPONSES_BASE_URL` | empty | Direct upstream base URL; normally leave empty when `API_PROXY_URL` is set |
-| `UPSTREAM_API_KEY` | empty | Optional fixed upstream key. When empty, the caller's `Authorization` header is forwarded |
-| `UPSTREAM_RESPONSES_MODEL` | `gpt-5.5` | Internal Responses model used for the sub2api `image_generation` tool call. It does not change the public API model name. |
+| `ENABLE_ASYNC_IMAGE_API` | `false` | 启用前端异步入口并启动本地异步 API 进程 |
+| `ASYNC_IMAGE_WORKER_CONCURRENCY` | `10` | 同时向 sub2api 发送流式 `/v1/responses` 请求的最大数量 |
+| `ASYNC_IMAGE_QUEUE_MAX` | `100` | 等待队列最多任务数；活跃 worker 单独计算 |
+| `ASYNC_IMAGE_QUEUE_MAX_INPUT_BYTES` | `67108864` | 等待任务可保留的输入总内存上限，保护大图编辑请求 |
+| `ASYNC_IMAGE_MAX_REQUEST_BYTES` | `26214400` | 接受的 JSON 或 multipart 请求体上限（25 MiB） |
+| `ASYNC_IMAGE_NGINX_MAX_BODY_SIZE` | `25m` | `/v1/images/` 的 Nginx 请求大小限制，应与应用限制保持一致 |
+| `ASYNC_IMAGE_STORAGE_DIR` | `/app/data/async-image` | 任务 JSON 与最终图片文件目录 |
+| `ASYNC_IMAGE_TASK_TTL_SECONDS` | `86400` | 已完成或失败任务及图片的保留时间（24 小时） |
+| `ASYNC_IMAGE_TASK_CLEANUP_INTERVAL_SECONDS` | `300` | 清理过期任务的间隔（秒） |
+| `ASYNC_IMAGE_TASK_TIMEOUT_SECONDS` | `1800` | 单个上游流的超时时间，避免 worker 永久占用 |
+| `ASYNC_IMAGE_PUBLIC_BASE_URL` | 空 | 公网 HTTPS 部署必须设置，用于生成外部可访问的图片结果 URL |
+| `UPSTREAM_RESPONSES_BASE_URL` | 空 | 直接上游地址；设置 `API_PROXY_URL` 时通常留空 |
+| `UPSTREAM_API_KEY` | 空 | 可选固定上游 Key；留空时转发调用方的 `Authorization` |
+| `UPSTREAM_RESPONSES_MODEL` | `gpt-5.5` | 内部向 sub2api 调用 `image_generation` 工具时使用的模型，不改变对外 API 模型名 |
 
-For a reverse proxy or TLS terminator in front of the container, set `ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com` so returned URLs always use the public HTTPS hostname. This is the recommended production configuration and prevents mixed-content image downloads. The bundled Nginx also preserves incoming `X-Forwarded-Proto` and `X-Forwarded-Host` values as a fallback. Nginx forwards `/v1/images/...` and `/healthz` to the local Node service; existing `/api-proxy/...` behavior remains the upstream sub2api proxy.
+反向代理或 TLS 终止部署必须设置 `ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com`，以确保结果 URL 使用正确的 HTTPS 公网域名，避免浏览器 Mixed Content。内置 Nginx 会保留 `X-Forwarded-Proto` 与 `X-Forwarded-Host` 作为后备；`/v1/images/...` 和 `/healthz` 转发给本地 Node 异步服务，既有 `/api-proxy/...` 仍转发给上游 sub2api。
 
-## Storage and Retention
+## 存储与保留策略
 
-This implementation follows the common asynchronous image pattern: task metadata is durable, result images are binary files, and the API returns URLs rather than retaining full Base64 payloads in task JSON. Completed and failed tasks are removed with their result files after 24 hours. Queued and processing tasks are not removed by TTL; the configurable timeout turns a stuck stream into a failed task instead.
+任务元数据持久化保存，结果图片以二进制文件保存，API 默认返回 URL 而非把完整 Base64 写入任务 JSON。已完成和失败任务会在 24 小时后连同结果文件清理；排队中与处理中任务不按 TTL 清理，但可配置超时会将卡住的上游流标记为失败。
 
-After a process restart, completed and failed tasks remain pollable. A task that was queued or processing during the restart is marked failed as `task interrupted by server restart`; it is never silently replayed, preventing accidental duplicate billable generations.
+服务进程重启后，已完成和失败任务仍可查询。重启时处于 `queued` 或 `processing` 的任务会标记为 `task interrupted by server restart`，绝不会自动重放，以防重复计费。
 
-Image file URLs contain an unguessable task UUID and expire with the task, but they are bearer-style links. Put the service behind your normal access control when different users must not share results. For multi-instance deployment, replace this local file store with shared object storage plus a shared task database/queue; the current implementation is deliberately single-container and single-volume.
+图片 URL 包含不可猜测的任务 UUID，但仍属于持有即访问的链接。不同用户需要隔离结果时，应在服务前加正常的访问控制。多实例部署需要共享对象存储、共享任务数据库与队列；当前实现刻意定位为单容器、单数据卷部署。

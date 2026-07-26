@@ -60,6 +60,18 @@ docker run -d \
 
 在不改变 Playground 页面和用户填写 API Key 方式的前提下，增加以下参数即可启用本地异步队列。浏览器仍发送用户自己的 API Key，worker 会将该 Key 转发到已配置的、兼容 sub2api 的上游 `/v1/responses` 接口。此“用户自带 Key”模式不要设置 `UPSTREAM_API_KEY`。
 
+### 对外 API 模型名说明
+
+异步生图服务对外提供标准的 OpenAI 兼容接口：
+
+- `POST /v1/images/generations`
+- `POST /v1/images/edits`
+- `GET /v1/images/tasks/{task_id}`
+
+调用这些**对外异步接口**时，`model` 请始终传 `gpt-image-2`。这是公开 API 的统一模型名，也是说明弹窗、调用示例和智能体 Skill 应使用的名称。
+
+Docker 参数 `DEFAULT_API_URL` 中的 `model=gpt-5.5` 只用于 Playground 原有的同步流式模式，以及异步 worker 在容器内部向 sub2api 发起 `/v1/responses` 工具调用时的上游模型；它不是对外异步 API 的模型名，外部调用者不应传 `gpt-5.5`。
+
 ```bash
 docker pull ghcr.io/88fafa/gpt_image_playground:latest
 
@@ -82,7 +94,7 @@ docker run -d \
 
 `ASYNC_IMAGE_PUBLIC_BASE_URL` 必须填写用户访问 Playground 的 HTTPS 公网域名，例如 `https://image.example.com`。它确保异步结果链接始终返回正确的 HTTPS 地址，尤其适用于 TLS 由外层 Nginx、Caddy 或 CDN 终止的部署。`ASYNC_IMAGE_WORKER_CONCURRENCY` 控制该容器同时请求上游的流式任务总数；`ASYNC_IMAGE_QUEUE_MAX` 只限制等待中的任务。持久化卷会在容器重启后保留任务元数据和结果图片，结果在默认 24 小时保留期结束后清理。
 
-异步 API 包括 `POST /v1/images/generations`、`POST /v1/images/edits`、`GET /v1/images/tasks/{task_id}` 和 `GET /v1/images/files/{file}`。完整请求和响应示例、全部环境变量、轮询策略、保留策略及反向代理说明见 [docs/async-image-api-guide.md](docs/async-image-api-guide.md)。
+异步 API 包括 `POST /v1/images/generations`、`POST /v1/images/edits`、`GET /v1/images/tasks/{task_id}` 和 `GET /v1/images/files/{file}`。完整中文请求和响应示例、全部环境变量、轮询策略、保留策略及反向代理说明见 [异步生图 API 使用说明](docs/async-image-api-guide.md)。
 
 ## 💻 本地开发
 
