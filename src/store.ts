@@ -43,6 +43,7 @@ import {
   storeImageWithSize,
 } from './lib/db'
 import { callImageApi } from './lib/api'
+import { getAsyncImageTaskResult, shouldUseAsyncImageApi } from './lib/asyncImageApi'
 import { callAgentConversationTitleApi, callAgentResponsesApi, callBatchImageSingle, parseBatchImageCallArguments, type AgentApiResultImage } from './lib/agentApi'
 import { collectAgentRoundOutputImageSlots, extractAgentReferenceIds, getAgentCurrentReferenceId, getAgentGeneratedImageReferenceId, replaceAgentPromptImageReferencesForApi } from './lib/agentImageReferences'
 import { showBrowserNotification } from './lib/browserNotification'
@@ -75,11 +76,13 @@ const MAX_THUMBNAIL_CACHE_ENTRIES = 80
 const MAX_THUMBNAIL_BACKFILL_CONCURRENT = 4
 const FAL_RECOVERY_POLL_MS = 10_000
 const CUSTOM_RECOVERY_POLL_MS = 10_000
+const ASYNC_IMAGE_RECOVERY_POLL_MS = 10_000
 const SUPPORT_PROMPT_IMAGE_THRESHOLD = 50
 const AGENT_INPUT_DRAFT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000
 const AGENT_ROUND_IMAGE_MENTION_RE = /@(?:第)?(\d+)轮图(\d+)/g
 const falRecoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const customRecoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const asyncImageRecoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const openAIWatchdogTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const agentRoundControllers = new Map<string, AbortController>()
 const agentRecoveryContinuations = new Set<string>()
@@ -1715,7 +1718,7 @@ function isAsyncCustomProviderTask(settings: AppSettings, provider: string, hasI
 export function markInterruptedOpenAIRunningTasks(tasks: TaskRecord[], now = Date.now()) {
   const interruptedTasks: TaskRecord[] = []
   const updatedTasks = tasks.map((task) => {
-    if (!isRunningOpenAITask(task) || task.customTaskId) return task
+    if (!isRunningOpenAITask(task) || task.customTaskId || task.asyncImageTaskId) return task
 
     const updated: TaskRecord = {
       ...task,
@@ -1974,6 +1977,21 @@ function scheduleCustomRecovery(taskId: string, delayMs = CUSTOM_RECOVERY_POLL_M
   customRecoveryTimers.set(taskId, timer)
 }
 
+function clearAsyncImageRecoveryTimer(taskId: string) {
+  const timer = asyncImageRecoveryTimers.get(taskId)
+  if (timer) clearTimeout(timer)
+  asyncImageRecoveryTimers.delete(taskId)
+}
+
+function scheduleAsyncImageRecovery(taskId: string, delayMs = ASYNC_IMAGE_RECOVERY_POLL_MS) {
+  if (asyncImageRecoveryTimers.has(taskId)) return
+  const timer = setTimeout(() => {
+    asyncImageRecoveryTimers.delete(taskId)
+    void recoverAsyncImageTask(taskId)
+  }, delayMs)
+  asyncImageRecoveryTimers.set(taskId, timer)
+}
+
 function hasActualParams(params: Partial<TaskParams> | undefined): params is Partial<TaskParams> {
   return Boolean(params && Object.keys(params).length > 0)
 }
@@ -2126,6 +2144,76 @@ async function recoverFalTask(taskId: string) {
   }
 }
 
+async function completeRecoveredAsyncImageTask(task: TaskRecord, result: Awaited<ReturnType<typeof getAsyncImageTaskResult>>) {
+  const latest = useStore.getState().tasks.find((item) => item.id === task.id)
+  if (!latest || latest.status === 'done' || latest.error === AGENT_STOPPED_MESSAGE) return
+  if (latest.status !== 'running' && !latest.asyncImageRecoverable) return
+
+  const { outputIds, outputDataUrls, outputImageSizes, transparentOriginalImageIds } = await storeTaskOutputImages(task, result.images)
+  const actualParamsList = await resolveImageSizeParamsList(outputDataUrls, result.actualParamsList, outputImageSizes)
+  const latestBeforeUpdate = useStore.getState().tasks.find((item) => item.id === task.id)
+  if (!latestBeforeUpdate || latestBeforeUpdate.status === 'done' || latestBeforeUpdate.error === AGENT_STOPPED_MESSAGE || (latestBeforeUpdate.status !== 'running' && !latestBeforeUpdate.asyncImageRecoverable)) {
+    await deleteUnreferencedImageIds([...outputIds, ...(transparentOriginalImageIds ?? [])])
+    return
+  }
+
+  updateTaskInStore(task.id, {
+    outputImages: outputIds,
+    transparentOriginalImages: transparentOriginalImageIds,
+    actualParams: firstActualParams(actualParamsList),
+    actualParamsByImage: mapActualParamsByImage(outputIds, actualParamsList),
+    revisedPromptByImage: result.revisedPrompts?.reduce<Record<string, string>>((acc, revisedPrompt, index) => {
+      const imageId = outputIds[index]
+      if (imageId && revisedPrompt?.trim()) acc[imageId] = revisedPrompt
+      return acc
+    }, {}),
+    rawImageUrls: result.rawImageUrls?.length ? result.rawImageUrls : undefined,
+    status: 'done',
+    error: null,
+    asyncImageRecoverable: false,
+    finishedAt: Date.now(),
+    elapsed: Date.now() - task.createdAt,
+  })
+  useStore.getState().showToast(`异步生图任务已恢复，共 ${outputIds.length} 张图片`, 'success')
+  if (!isAgentTask(task)) showTaskCompletionNotification('图像生成完成', `异步生图任务已恢复，共 ${outputIds.length} 张图片。`)
+  else void continueRecoveredAgentRound(task.id)
+}
+
+async function recoverAsyncImageTask(taskId: string) {
+  const { settings, tasks } = useStore.getState()
+  const task = tasks.find((item) => item.id === taskId)
+  if (!task || !task.asyncImageTaskId || task.status === 'done') return
+
+  const profile = getTaskApiProfile(settings, task)
+  if (!profile || !shouldUseAsyncImageApi(profile)) {
+    scheduleAsyncImageRecovery(taskId)
+    return
+  }
+
+  try {
+    const result = await getAsyncImageTaskResult(profile, task.asyncImageTaskId, task.params)
+    clearAsyncImageRecoveryTimer(taskId)
+    await completeRecoveredAsyncImageTask(task, result)
+  } catch (err) {
+    if (isNetworkRecoverableError(err)) {
+      updateTaskInStore(taskId, { asyncImageRecoverable: true })
+      scheduleAsyncImageRecovery(taskId)
+      return
+    }
+
+    clearAsyncImageRecoveryTimer(taskId)
+    updateTaskInStore(taskId, {
+      status: 'error',
+      error: err instanceof Error ? err.message : String(err),
+      ...getRawErrorPayload(err),
+      asyncImageRecoverable: false,
+      finishedAt: Date.now(),
+      elapsed: Date.now() - task.createdAt,
+    })
+    if (isAgentTask(task)) void continueRecoveredAgentRound(taskId)
+  }
+}
+
 /** 初始化：从 IndexedDB 加载任务，按需恢复输入图片，并清理孤立图片 */
 export async function initStore() {
   const legacyAgentConversations = normalizeAgentConversations(useStore.getState().agentConversations)
@@ -2194,6 +2282,12 @@ export async function initStore() {
       (task.status === 'running' || task.customRecoverable)
     ) {
       scheduleCustomRecovery(task.id, 0)
+    }
+    if (
+      task.asyncImageTaskId &&
+      (task.status === 'running' || task.asyncImageRecoverable)
+    ) {
+      scheduleAsyncImageRecovery(task.id, 0)
     }
   }
 
@@ -4684,6 +4778,7 @@ async function executeTask(taskId: string) {
   if (
     taskProvider !== 'fal' &&
     !isAsyncCustomProviderTask(requestSettings, taskProvider, task.inputImageIds.length > 0) &&
+    !shouldUseAsyncImageApi(activeProfile) &&
     !usesConcurrentOpenAIImageRequests(activeProfile, task.params)
   ) {
     scheduleOpenAIWatchdog(taskId, activeProfile.timeout, activeProfile)
@@ -4728,6 +4823,14 @@ async function executeTask(taskId: string) {
           customTaskId: request.taskId,
           customRecoverable: false,
         })
+      },
+      onAsyncImageTaskEnqueued: async (request) => {
+        updateTaskInStore(taskId, {
+          asyncImageTaskId: request.taskId,
+          asyncImageRecoverable: true,
+        })
+        const queuedTask = useStore.getState().tasks.find((item) => item.id === taskId)
+        if (queuedTask) await putTask(queuedTask)
       },
       onPartialImage: (partial) => {
         useStore.getState().setTaskStreamPreview(taskId, partial.image, partial.requestIndex)
@@ -4801,6 +4904,7 @@ async function executeTask(taskId: string) {
       elapsed: Date.now() - task.createdAt,
       falRecoverable: false,
       customRecoverable: false,
+      asyncImageRecoverable: false,
     })
     void deleteUnreferencedImageIds(partialImageIdsToClean)
 
@@ -4828,6 +4932,7 @@ async function executeTask(taskId: string) {
       ? { requestId: latestTask.falRequestId, endpoint: latestTask.falEndpoint }
       : null)
     const latestCustomTaskInfo = customTaskInfo ?? (latestTask.customTaskId ? { taskId: latestTask.customTaskId } : null)
+    const latestAsyncImageTaskId = latestTask.asyncImageTaskId
     if (latestTask.apiProvider === 'fal' && latestFalRequestInfo && isNetworkRecoverableError(err)) {
       updateTaskInStore(taskId, {
         status: 'error',
@@ -4849,6 +4954,16 @@ async function executeTask(taskId: string) {
         elapsed: Date.now() - task.createdAt,
       })
       scheduleCustomRecovery(taskId)
+    } else if (latestAsyncImageTaskId && isNetworkRecoverableError(err)) {
+      updateTaskInStore(taskId, {
+        status: 'error',
+        error: '与异步生图任务的连接已断开，之后会继续查询任务结果。',
+        asyncImageTaskId: latestAsyncImageTaskId,
+        asyncImageRecoverable: true,
+        finishedAt: Date.now(),
+        elapsed: Date.now() - task.createdAt,
+      })
+      scheduleAsyncImageRecovery(taskId)
     } else {
       let errorMessage = err instanceof Error ? err.message : String(err)
       const settings = useStore.getState().settings
@@ -4871,6 +4986,7 @@ async function executeTask(taskId: string) {
         ...getRawErrorPayload(err),
         falRecoverable: false,
         customRecoverable: false,
+        asyncImageRecoverable: false,
         finishedAt: Date.now(),
         elapsed: Date.now() - task.createdAt,
       })

@@ -46,6 +46,7 @@ interface AsyncImageTaskPollResponse {
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000
+const PUBLIC_ASYNC_IMAGE_MODEL = 'gpt-image-2'
 export function shouldUseAsyncImageApi(profile: ApiProfile): boolean {
   return readRuntimeEnv(import.meta.env.VITE_ASYNC_IMAGE_API_ENABLED) === 'true' &&
     profile.provider === 'openai' &&
@@ -125,7 +126,7 @@ async function submitAsyncImageTask(opts: CallApiOptions, profile: ApiProfile, s
   let response: Response
   if (isEdit) {
     const formData = new FormData()
-    formData.append('model', profile.model)
+    formData.append('model', PUBLIC_ASYNC_IMAGE_MODEL)
     formData.append('prompt', prompt)
     formData.append('size', params.size)
     formData.append('output_format', params.output_format)
@@ -174,7 +175,7 @@ async function submitAsyncImageTask(opts: CallApiOptions, profile: ApiProfile, s
     })
   } else {
     const body: Record<string, unknown> = {
-      model: profile.model,
+      model: PUBLIC_ASYNC_IMAGE_MODEL,
       prompt,
       size: params.size,
       output_format: params.output_format,
@@ -208,6 +209,12 @@ async function submitAsyncImageTask(opts: CallApiOptions, profile: ApiProfile, s
     payload: await response.json() as AsyncImageTaskSubmitResponse,
     retryAfterMs: submitRetryAfterMs(response),
   }
+}
+
+export async function getAsyncImageTaskResult(profile: ApiProfile, taskId: string, params: TaskParams): Promise<CallApiResult> {
+  const controller = new AbortController()
+  const mime = MIME_MAP[params.output_format] || 'image/png'
+  return pollAsyncImageTask(profile, taskId, mime, controller.signal)
 }
 
 async function pollAsyncImageTask(profile: ApiProfile, taskId: string, mime: string, signal: AbortSignal, initialDelayMs = 0): Promise<CallApiResult> {
@@ -304,6 +311,7 @@ export async function callAsyncImageApi(opts: CallApiOptions, profile: ApiProfil
       ;(err as any).rawResponsePayload = JSON.stringify(submitPayload, null, 2)
       throw err
     }
+    await opts.onAsyncImageTaskEnqueued?.({ taskId })
   } finally {
     clearTimeout(submitTimeoutId)
   }

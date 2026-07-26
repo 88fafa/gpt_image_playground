@@ -76,7 +76,7 @@ async function waitForTask(baseUrl, taskId) {
 describe('async image api worker helpers', () => {
   it('builds a streaming Responses image_generation request for edits', () => {
     const body = buildResponsesRequest({
-      model: 'gpt-5.5',
+      model: 'gpt-image-2',
       prompt: 'edit this',
       size: '1024x1024',
       quality: 'medium',
@@ -91,6 +91,7 @@ describe('async image api worker helpers', () => {
     })
 
     expect(body.stream).toBe(true)
+    expect(body.model).toBe('gpt-5.5')
     expect(body.tool_choice).toBe('required')
     expect(body.tools[0]).toMatchObject({
       type: 'image_generation',

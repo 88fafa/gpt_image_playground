@@ -34,7 +34,7 @@ Content-Type: application/json
 Authorization: Bearer YOUR_API_KEY
 
 请求体字段：
-- model：模型名称，通常使用 gpt-5.5。
+- model：对外标准模型名称，使用 gpt-image-2；服务内部会转为兼容上游的 Responses 工具调用。
 - prompt：必填，图片描述和生成要求。
 - size：图片尺寸，例如 1024x1024、1536x1024、1024x1536。
 - quality：图片质量，例如 low、medium、high。
@@ -51,7 +51,7 @@ curl -X POST '${baseUrl}/images/generations' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "model": "gpt-5.5",
+    "model": "gpt-image-2",
     "prompt": "一张高质量的产品宣传图",
     "size": "1024x1024",
     "quality": "medium",
@@ -70,7 +70,7 @@ Content-Type: multipart/form-data
 Authorization: Bearer YOUR_API_KEY
 
 字段：
-- model：模型名称，通常使用 gpt-5.5。
+- model：对外标准模型名称，使用 gpt-image-2。
 - prompt：必填，编辑要求。
 - image：要编辑的图片文件，可重复上传多个 image。
 - 多图编辑推荐使用重复的 image[] 字段；每个字段对应一个文件，服务端按上传顺序传给模型。
@@ -81,7 +81,7 @@ Authorization: Bearer YOUR_API_KEY
 
 curl -X POST '${baseUrl}/images/edits' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
-  -F 'model=gpt-5.5' \\
+  -F 'model=gpt-image-2' \\
   -F 'prompt=参考这些图片，制作一张统一风格的产品海报' \\
   -F 'image[]=@reference-1.png' \\
   -F 'image[]=@reference-2.png' \\
@@ -96,7 +96,7 @@ POST ${baseUrl}/images/edits
 Content-Type: application/json
 
 {
-  "model": "gpt-5.5",
+  "model": "gpt-image-2",
   "prompt": "参考这些图片，制作一张统一风格的产品海报",
   "image": [
     "data:image/png;base64,BASE64_IMAGE_1",
@@ -112,7 +112,7 @@ JSON 方式的 image 也可以改用 images 或 input_images 数组；上传本�
 示例：
 curl -X POST '${baseUrl}/images/edits' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
-  -F 'model=gpt-5.5' \\
+  -F 'model=gpt-image-2' \\
   -F 'prompt=把背景改成浅蓝色，保持主体不变' \\
   -F 'image=@input.png' \\
   -F 'response_format=url'
@@ -221,7 +221,7 @@ export default function AsyncImageApiGuideModal({ onClose }: AsyncImageApiGuideM
   -H 'Authorization: Bearer YOUR_API_KEY' \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "model": "gpt-5.5",
+    "model": "gpt-image-2",
     "prompt": "一张高质量的产品宣传图",
     "size": "1024x1024",
     "quality": "medium",
@@ -230,7 +230,7 @@ export default function AsyncImageApiGuideModal({ onClose }: AsyncImageApiGuideM
   }'`}</pre>
               </div>
               <dl className="mt-3 grid gap-x-5 gap-y-1.5 sm:grid-cols-[130px_1fr]">
-                <dt><code>model</code></dt><dd>模型名称，通常为 <code>gpt-5.5</code>。</dd>
+                <dt><code>model</code></dt><dd>对外标准模型名称，使用 <code>gpt-image-2</code>。</dd>
                 <dt><code>prompt</code></dt><dd>必填，图片描述和生成要求。</dd>
                 <dt><code>size</code></dt><dd>例如 <code>1024x1024</code>、<code>1536x1024</code>、<code>1024x1536</code>。</dd>
                 <dt><code>quality</code></dt><dd><code>low</code>、<code>medium</code> 或 <code>high</code>。</dd>
@@ -248,7 +248,7 @@ export default function AsyncImageApiGuideModal({ onClose }: AsyncImageApiGuideM
               <div className="overflow-x-auto rounded-xl bg-gray-950 p-3 text-xs leading-5 text-gray-100">
                 <pre>{`curl -X POST '${baseUrl}/images/edits' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
-  -F 'model=gpt-5.5' \\
+  -F 'model=gpt-image-2' \\
   -F 'prompt=把背景改成浅蓝色，保持主体不变' \\
   -F 'image=@input.png' \\
   -F 'response_format=url'`}</pre>
@@ -257,7 +257,7 @@ export default function AsyncImageApiGuideModal({ onClose }: AsyncImageApiGuideM
                 <pre>{`# 多张图片：重复使用 image[] 字段
 curl -X POST '${baseUrl}/images/edits' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
-  -F 'model=gpt-5.5' \\
+  -F 'model=gpt-image-2' \\
   -F 'prompt=参考这些图片，制作一张统一风格的产品海报' \\
   -F 'image[]=@reference-1.png' \\
   -F 'image[]=@reference-2.png' \\
@@ -272,7 +272,7 @@ POST ${baseUrl}/images/edits
 Content-Type: application/json
 
 {
-  "model": "gpt-5.5",
+  "model": "gpt-image-2",
   "prompt": "参考这些图片，制作一张统一风格的产品海报",
   "image": [
     "data:image/png;base64,BASE64_IMAGE_1",

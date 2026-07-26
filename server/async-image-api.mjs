@@ -290,7 +290,9 @@ function createResponsesInput(prompt, images, allowPromptRewrite) {
 
 export function buildResponsesRequest(imageRequest, options = {}) {
   const isEdit = imageRequest.images.length > 0
-  const model = String(options.upstreamModel || imageRequest.model || '').trim()
+  // The public image API accepts gpt-image-2. This bridge always uses its
+  // configured Responses model when calling sub2api's image_generation tool.
+  const model = String(options.upstreamModel || 'gpt-5.5').trim()
   if (!model) throw new Error('model is required')
   if (!imageRequest.prompt) throw new Error('prompt is required')
   const prompt = appendImageSizeParamsToPrompt(imageRequest.prompt, imageRequest.size)
@@ -674,7 +676,7 @@ export function createTaskManager(options = {}) {
   const managerOptions = {
     upstreamBaseUrl: options.upstreamBaseUrl || process.env.UPSTREAM_RESPONSES_BASE_URL || process.env.API_PROXY_URL || '',
     upstreamApiKey: options.upstreamApiKey || process.env.UPSTREAM_API_KEY || '',
-    upstreamModel: options.upstreamModel || process.env.UPSTREAM_RESPONSES_MODEL || '',
+    upstreamModel: options.upstreamModel || process.env.UPSTREAM_RESPONSES_MODEL || 'gpt-5.5',
     workerConcurrency: Math.max(1, Math.floor(numberValue(options.workerConcurrency || process.env.ASYNC_IMAGE_WORKER_CONCURRENCY, DEFAULT_WORKER_CONCURRENCY))),
     queueMax: Math.max(1, Math.floor(numberValue(options.queueMax || process.env.ASYNC_IMAGE_QUEUE_MAX, DEFAULT_QUEUE_MAX))),
     queueInputBytesMax: Math.max(1024, Math.floor(numberValue(options.queueInputBytesMax || process.env.ASYNC_IMAGE_QUEUE_MAX_INPUT_BYTES, DEFAULT_QUEUE_INPUT_BYTES))),

@@ -609,6 +609,7 @@ describe('callImageApi', () => {
     vi.stubEnv('VITE_ASYNC_IMAGE_API_ENABLED', 'true')
     vi.useFakeTimers()
 
+    let taskWasPersisted = false
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({
         task_id: 'imgtask_1',
@@ -617,16 +618,19 @@ describe('callImageApi', () => {
         status: 202,
         headers: { 'Content-Type': 'application/json', 'Retry-After': '25' },
       }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        task_id: 'imgtask_1',
-        status: 'completed',
-        result: {
-          data: [{ b64_json: 'aW1hZ2U=' }],
-        },
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }))
+      .mockImplementationOnce(async () => {
+        expect(taskWasPersisted).toBe(true)
+        return new Response(JSON.stringify({
+          task_id: 'imgtask_1',
+          status: 'completed',
+          result: {
+            data: [{ b64_json: 'aW1hZ2U=' }],
+          },
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      })
 
     const resultPromise = callImageApi({
       settings: {
@@ -639,6 +643,10 @@ describe('callImageApi', () => {
       prompt: 'prompt',
       params: { ...DEFAULT_PARAMS, n: 2 },
       inputImageDataUrls: [],
+      onAsyncImageTaskEnqueued: async ({ taskId }) => {
+        expect(taskId).toBe('imgtask_1')
+        taskWasPersisted = true
+      },
     })
 
     await vi.advanceTimersByTimeAsync(0)
@@ -653,6 +661,7 @@ describe('callImageApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/images/tasks/imgtask_1', expect.objectContaining({ method: 'GET' }))
     const [, init] = fetchMock.mock.calls[0]
     const body = JSON.parse(String((init as RequestInit).body))
+    expect(body.model).toBe('gpt-image-2')
     expect(body).toMatchObject({
       prompt: 'prompt\n\n图片参数：比例1:1  1K',
       n: 2,

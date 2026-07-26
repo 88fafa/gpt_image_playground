@@ -64,7 +64,7 @@ curl -X POST http://localhost:8010/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: 9f7728b3-7b51-4c73-8b71-a-single-submit" \
   -d '{
-    "model": "gpt-5.5",
+    "model": "gpt-image-2",
     "prompt": "A compact wooden cabin beside a clear lake at sunrise, detailed editorial photography",
     "size": "1024x1024",
     "quality": "medium",
@@ -127,7 +127,7 @@ Use `multipart/form-data`. `image`, `image[]`, or `images` are accepted. `mask` 
 ```bash
 curl -X POST http://localhost:8010/v1/images/edits \
   -H "Authorization: Bearer YOUR_SUB2API_KEY" \
-  -F "model=gpt-5.5" \
+  -F "model=gpt-image-2" \
   -F "prompt=Replace the sky with a bright, clear summer sky" \
   -F "image[]=@input.png" \
   -F "mask=@mask.png" \
@@ -180,7 +180,7 @@ docker run -d \
 | `ASYNC_IMAGE_PUBLIC_BASE_URL` | empty | Required for public HTTPS deployments; the external Playground base URL used in image result URLs |
 | `UPSTREAM_RESPONSES_BASE_URL` | empty | Direct upstream base URL; normally leave empty when `API_PROXY_URL` is set |
 | `UPSTREAM_API_KEY` | empty | Optional fixed upstream key. When empty, the caller's `Authorization` header is forwarded |
-| `UPSTREAM_RESPONSES_MODEL` | empty | Optional model override. When empty, the request `model` is used |
+| `UPSTREAM_RESPONSES_MODEL` | `gpt-5.5` | Internal Responses model used for the sub2api `image_generation` tool call. It does not change the public API model name. |
 
 For a reverse proxy or TLS terminator in front of the container, set `ASYNC_IMAGE_PUBLIC_BASE_URL=https://image.example.com` so returned URLs always use the public HTTPS hostname. This is the recommended production configuration and prevents mixed-content image downloads. The bundled Nginx also preserves incoming `X-Forwarded-Proto` and `X-Forwarded-Host` values as a fallback. Nginx forwards `/v1/images/...` and `/healthz` to the local Node service; existing `/api-proxy/...` behavior remains the upstream sub2api proxy.
 

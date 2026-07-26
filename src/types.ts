@@ -182,6 +182,10 @@ export interface TaskRecord {
   customTaskId?: string
   /** 自定义异步任务是否等待自动恢复 */
   customRecoverable?: boolean
+  /** Built-in async image API task ID, persisted before browser polling starts. */
+  asyncImageTaskId?: string
+  /** Whether the built-in async image task should be recovered after a reload or network interruption. */
+  asyncImageRecoverable?: boolean
   /** API 返回的实际生效参数，用于标记与请求值不一致的情况 */
   actualParams?: Partial<TaskParams>
   /** 输出图片对应的实际生效参数，key 为 outputImages 中的图片 id */
