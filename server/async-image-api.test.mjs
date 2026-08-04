@@ -92,10 +92,11 @@ describe('async image api worker helpers', () => {
 
     expect(body.stream).toBe(true)
     expect(body.model).toBe('gpt-5.5')
-    expect(body.tool_choice).toBe('required')
+    expect(body.tool_choice).toEqual({ type: 'image_generation' })
     expect(body.tools[0]).toMatchObject({
       type: 'image_generation',
       action: 'edit',
+      model: 'gpt-image-2',
       partial_images: 2,
       input_image_mask: { image_url: 'data:image/png;base64,bWFzaw==' },
     })
@@ -174,6 +175,38 @@ describe('async image api worker helpers', () => {
     await expect(extractImagesFromResponsesSSEStream(stream)).resolves.toEqual([
       { b64_json: 'ZmluaXNoZWQ=', revised_prompt: undefined, size: undefined, quality: undefined, output_format: undefined },
     ])
+  })
+
+  it('accepts response.done as the terminal Responses event', () => {
+    expect(extractImagesFromResponsesSSE([
+      'data: {"type":"response.output_item.done","item":{"type":"image_generation_call","result":"ZG9uZQ=="}}',
+      '',
+      'data: {"type":"response.done","response":{"output":[{"type":"image_generation_call","result":"ZmluYWw="}]}}',
+      '',
+    ].join('\n'))).toEqual([
+      { b64_json: 'ZG9uZQ==', revised_prompt: undefined, size: undefined, quality: undefined, output_format: undefined },
+      { b64_json: 'ZmluYWw=', revised_prompt: undefined, size: undefined, quality: undefined, output_format: undefined },
+    ])
+  })
+
+  it('accepts image_generation.completed and plain JSON gateway responses', async () => {
+    expect(extractImagesFromResponsesSSE(
+      'data: {"type":"image_generation.completed","b64_json":"Y29tcGxldGVk","output_format":"png"}\n\n',
+    )).toMatchObject([{ b64_json: 'Y29tcGxldGVk', output_format: 'png' }])
+
+    const plainJson = JSON.stringify({
+      output: [{ type: 'image_generation_call', result: { b64_json: 'cGxhaW4=' } }],
+    })
+    expect(extractImagesFromResponsesSSE(plainJson)).toMatchObject([{ b64_json: 'cGxhaW4=' }])
+
+    const bytes = new TextEncoder().encode(plainJson)
+    const stream = new ReadableStream({
+      start(controller) {
+        for (let offset = 0; offset < bytes.length; offset += 5) controller.enqueue(bytes.slice(offset, offset + 5))
+        controller.close()
+      },
+    })
+    await expect(extractImagesFromResponsesSSEStream(stream)).resolves.toMatchObject([{ b64_json: 'cGxhaW4=' }])
   })
 
   it('defaults to ten upstream workers', () => {
