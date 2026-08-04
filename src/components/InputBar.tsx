@@ -744,7 +744,7 @@ export default function InputBar() {
   const moderationDisabled = isFalProvider
   const transparentOutputAvailable = appMode === 'gallery'
   const showTransparentOutputControl = transparentOutputAvailable && params.output_format === 'png'
-  const transparentOutputEnabled = transparentOutputAvailable && showTransparentOutputControl && params.transparent_output
+  const transparentOutputEnabled = transparentOutputAvailable && params.transparent_output
   const compressionDisabled = params.output_format === 'png' || isFalProvider
   const outputImageLimit = getOutputImageLimitForSettings(effectiveSettings)
   const isFalTextToImage = isFalProvider && inputImages.length === 0
@@ -917,11 +917,15 @@ export default function InputBar() {
 
   useEffect(() => {
     const normalizedParams = normalizeParamsForSettings(params, effectiveSettings, { hasInputImages: inputImages.length > 0 })
+    if (appMode === 'gallery') {
+      normalizedParams.output_format = 'png'
+      normalizedParams.output_compression = null
+    }
     const patch = getChangedParams(params, normalizedParams)
     if (Object.keys(patch).length) {
       setParams(patch)
     }
-  }, [inputImages.length, params, effectiveSettings, setParams])
+  }, [appMode, inputImages.length, params, effectiveSettings, setParams])
 
   useEffect(() => () => {
     if (imageHintTimerRef.current != null) {

@@ -230,7 +230,9 @@
 
 .settings-api-simple > * { display: none; }
 .settings-api-simple > .settings-api-key { display: block; }
-.simple-input-params > label:not(:first-child) { display: none; }
+.simple-input-params > label { display: none; }
+.simple-input-params > label.simple-input-size,
+.simple-input-params > label.simple-input-transparency { display: flex; }
 
 :root {
   --background: 0 0% 100%;
