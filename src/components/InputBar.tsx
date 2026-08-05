@@ -917,6 +917,8 @@ export default function InputBar() {
 
   useEffect(() => {
     const normalizedParams = normalizeParamsForSettings(params, effectiveSettings, { hasInputImages: inputImages.length > 0 })
+    // Transparency is temporarily hidden; clear any value persisted by an earlier build.
+    normalizedParams.transparent_output = false
     const patch = getChangedParams(params, normalizedParams)
     if (Object.keys(patch).length) {
       setParams(patch)

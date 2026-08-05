@@ -119,43 +119,6 @@ export default function InputParamsPanel({
           text={<>fal.ai 的文生图模式不支持 <code className="rounded bg-white/10 px-1 py-0.5 font-mono">auto</code> 参数</>}
         />
       </label>
-      {transparentOutputAvailable ? (
-        <label
-          className="simple-input-transparency relative flex flex-col gap-0.5"
-          onMouseEnter={transparentOutputHint.show}
-          onMouseLeave={transparentOutputHint.hide}
-          onTouchStart={transparentOutputHint.startTouch}
-          onTouchEnd={transparentOutputHint.clearTimer}
-          onTouchCancel={transparentOutputHint.hide}
-          onClick={transparentOutputHint.show}
-        >
-          <span className="text-gray-400 dark:text-gray-500 ml-1">透明背景</span>
-          <Select
-            value={transparentOutputEnabled ? 'on' : 'off'}
-            onChange={(val) => {
-              if (val === 'on') {
-                setParams({
-                  transparent_output: true,
-                  output_format: 'png',
-                  output_compression: null,
-                })
-                return
-              }
-              setParams({ transparent_output: false })
-            }}
-            options={[
-              { label: '关闭', value: 'off' },
-              { label: '开启', value: 'on' },
-            ]}
-            className={selectClass}
-            onOpenChange={onTransparentOutputMenuOpenChange}
-          />
-          <ButtonTooltip
-            visible={transparentOutputHint.visible}
-            text="基于提示词与后处理，并非模型原生生成"
-          />
-        </label>
-      ) : null}
     </div>
   )
 }
