@@ -133,11 +133,15 @@ export default function InputParamsPanel({
           <Select
             value={transparentOutputEnabled ? 'on' : 'off'}
             onChange={(val) => {
-              setParams({
-                transparent_output: val === 'on',
-                output_format: 'png',
-                output_compression: null,
-              })
+              if (val === 'on') {
+                setParams({
+                  transparent_output: true,
+                  output_format: 'png',
+                  output_compression: null,
+                })
+                return
+              }
+              setParams({ transparent_output: false })
             }}
             options={[
               { label: '关闭', value: 'off' },

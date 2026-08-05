@@ -393,6 +393,49 @@ describe('mask draft lifecycle in store actions', () => {
     await clearImages()
   })
 
+  it('keeps the normal request unchanged when transparent background is disabled', async () => {
+    const { callImageApi } = await import('./lib/api')
+    vi.mocked(callImageApi).mockClear()
+    vi.mocked(removeKeyedBackgroundFromDataUrl).mockClear()
+    vi.mocked(callImageApi).mockResolvedValueOnce({
+      images: [],
+      actualParams: {},
+      actualParamsList: [],
+      revisedPrompts: [],
+    })
+    useStore.setState({
+      prompt: '普通商品图',
+      params: {
+        ...DEFAULT_PARAMS,
+        output_format: 'webp',
+        output_compression: 80,
+        transparent_output: false,
+      },
+    })
+
+    await submitTask()
+    for (let i = 0; i < 5; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(callImageApi).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: expect.stringContaining('普通商品图'),
+      params: expect.objectContaining({
+        output_format: 'webp',
+        output_compression: 80,
+        transparent_output: false,
+      }),
+    }))
+    expect(removeKeyedBackgroundFromDataUrl).not.toHaveBeenCalled()
+    const [task] = useStore.getState().tasks
+    expect(task).toMatchObject({
+      transparentOutput: undefined,
+      transparentPrompt: undefined,
+    })
+    await clearTasks()
+    await clearImages()
+  })
+
   it('falls back to the original output when transparent post-processing fails', async () => {
     const { callImageApi } = await import('./lib/api')
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

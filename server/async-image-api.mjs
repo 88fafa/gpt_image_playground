@@ -14,7 +14,6 @@ const DEFAULT_REQUEST_BODY_BYTES = 25 * 1024 * 1024
 const DEFAULT_TASK_TTL_SECONDS = 24 * 60 * 60
 const DEFAULT_CLEANUP_INTERVAL_SECONDS = 5 * 60
 const DEFAULT_TASK_TIMEOUT_SECONDS = 30 * 60
-const PUBLIC_IMAGE_MODEL = 'gpt-image-2'
 const IMAGE_OUTPUT_FORMATS = new Map([
   ['png', { extension: 'png', contentType: 'image/png' }],
   ['jpeg', { extension: 'jpg', contentType: 'image/jpeg' }],
@@ -301,7 +300,6 @@ export function buildResponsesRequest(imageRequest, options = {}) {
   const tool = {
     type: 'image_generation',
     action: isEdit ? 'edit' : 'generate',
-    model: PUBLIC_IMAGE_MODEL,
     size: imageRequest.size || undefined,
     output_format: imageRequest.output_format || 'png',
     moderation: imageRequest.moderation || 'auto',
@@ -322,7 +320,7 @@ export function buildResponsesRequest(imageRequest, options = {}) {
     model,
     input: createResponsesInput(prompt, imageRequest.images, imageRequest.allow_prompt_rewrite),
     tools: [tool],
-    tool_choice: { type: 'image_generation' },
+    tool_choice: 'required',
     stream: true,
   }
 }
@@ -354,15 +352,9 @@ function imageResultBase64(result) {
 function collectImageItemsFromOutput(output) {
   if (!Array.isArray(output)) return []
   return output
-    .filter((item) => item && typeof item === 'object' && (
-      item.type === 'image_generation_call' ||
-      item.type === 'image_generation.completed' ||
-      item.type === 'image_edit.completed'
-    ))
+    .filter((item) => item && typeof item === 'object' && item.type === 'image_generation_call')
     .map((item) => ({
-      // Responses providers disagree on whether the final payload lives in
-      // `result` or directly on the completed event as `b64_json`.
-      b64_json: imageResultBase64(item.result) || imageResultBase64(item),
+      b64_json: imageResultBase64(item.result),
       revised_prompt: typeof item.revised_prompt === 'string' ? item.revised_prompt : undefined,
       size: typeof item.size === 'string' ? item.size : undefined,
       quality: typeof item.quality === 'string' ? item.quality : undefined,
@@ -376,20 +368,6 @@ function createSseImageCollector() {
   const imageDigests = new Set()
   let lastError = ''
 
-  function collectImageApiData(data) {
-    if (!Array.isArray(data)) return
-    addImages(data
-      .filter((item) => item && typeof item === 'object' && (
-        typeof item.b64_json === 'string' ||
-        typeof item.base64 === 'string' ||
-        typeof item.image_base64 === 'string'
-      ))
-      .map((item) => ({
-        ...item,
-        type: item.type || 'image_generation.completed',
-      })))
-  }
-
   function addData(data) {
     let event
     try {
@@ -402,30 +380,13 @@ function createSseImageCollector() {
     if (event.error) {
       lastError = typeof event.error === 'string' ? event.error : event.error.message || 'upstream error'
     }
-    if (event.type === 'response.failed' && event.response?.error) {
-      lastError = event.response.error.message || event.response.error.code || 'upstream response failed'
-    }
-    if (event.type === 'response.incomplete') {
-      const reason = event.response?.incomplete_details?.reason
-      lastError = reason ? `upstream response incomplete: ${reason}` : 'upstream response incomplete'
-    }
-    if (event.type?.endsWith?.('.failed') && event.message) {
-      lastError = String(event.message)
+    if (event.type === 'response.failed' && event.response?.error?.message) {
+      lastError = event.response.error.message
     }
     if (event.type === 'response.output_item.done') {
       addImages(collectImageItemsFromOutput([event.item || event.output_item]))
     }
-    if (event.type === 'response.completed' || event.type === 'response.done') {
-      addImages(collectImageItemsFromOutput(event.response?.output || event.output))
-    }
-    if (event.type === 'image_generation.completed' || event.type === 'image_edit.completed') {
-      addImages(collectImageItemsFromOutput([event]))
-    }
-
-    // A few OpenAI-compatible gateways ignore `stream: true` and return a
-    // normal Responses/Images JSON payload. Accept those bodies as well.
-    collectImageApiData(event.data)
-    if (!event.type) {
+    if (event.type === 'response.completed') {
       addImages(collectImageItemsFromOutput(event.response?.output || event.output))
     }
   }
@@ -462,13 +423,7 @@ function sseDataFromBlock(block) {
 
 export function extractImagesFromResponsesSSE(text) {
   const collector = createSseImageCollector()
-  const blocks = parseSseDataBlocks(text)
-  if (blocks.length) {
-    for (const data of blocks) collector.addData(data)
-  } else if (String(text || '').trim()) {
-    // Handle a plain JSON response when the upstream does not honor SSE.
-    collector.addData(String(text).trim())
-  }
+  for (const data of parseSseDataBlocks(text)) collector.addData(data)
   return collector.result()
 }
 
@@ -504,7 +459,6 @@ export async function extractImagesFromResponsesSSEStream(body) {
     consumeCompleteBlocks()
     const finalData = sseDataFromBlock(buffer)
     if (finalData) collector.addData(finalData)
-    else if (buffer.trim()) collector.addData(buffer.trim())
     return collector.result()
   } finally {
     reader.releaseLock?.()
