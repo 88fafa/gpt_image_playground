@@ -27,6 +27,7 @@ import {
   normalizeStreamPartialImages,
   switchApiProfileProvider,
 } from '../lib/apiProfiles'
+import { GPT_IMAGE_MODEL_OPTIONS } from '../lib/imageModels'
 import {
   getDefaultPresetBaseUrl,
   getDefaultPresetProfileId,
@@ -1154,6 +1155,7 @@ export default function SettingsModal() {
                 </svg>
                 API 配置
               </button>
+              {!presetConfigOnly && <>
               <button
                 onClick={() => setActiveTab('general')}
                 className={`whitespace-nowrap flex-shrink-0 flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-xl transition-colors ${activeTab === 'general' ? 'bg-white dark:bg-white/[0.08] shadow-sm text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-white/[0.04]'}`}
@@ -1192,13 +1194,14 @@ export default function SettingsModal() {
                 </svg>
                 关于
               </button>
+              </>}
             </nav>
           </div>
 
           {/* Content */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-transparent relative overflow-hidden">
             <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar p-5 sm:p-6">
-            {activeTab === 'general' && (
+            {!presetConfigOnly && activeTab === 'general' && (
               <GeneralSettingsTab
                 draft={draft}
                 zipDownloadRouteSummary={zipDownloadRouteSummary}
@@ -1208,7 +1211,7 @@ export default function SettingsModal() {
               />
             )}
 
-            {activeTab === 'agent' && (
+            {!presetConfigOnly && activeTab === 'agent' && (
               <AgentSettingsTab
                 draft={draft}
                 agentMaxToolRoundsInput={agentMaxToolRoundsInput}
@@ -1225,6 +1228,7 @@ export default function SettingsModal() {
             
             {activeTab === 'api' && (
               <div className="space-y-4">
+                {!presetConfigOnly && <div>
                 <div>
                   <div className="mb-1.5 flex items-center gap-1.5">
                     <span className="block text-sm text-gray-600 dark:text-gray-300">当前配置</span>
@@ -1502,6 +1506,8 @@ export default function SettingsModal() {
                 </div>
               )}
 
+                </div>}
+
               {/* 5. API Key */}
               <div className="block">
                 <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">API Key</span>
@@ -1540,7 +1546,28 @@ export default function SettingsModal() {
                 </div>
               </div>
 
+              {presetConfigOnly && (
+                <label className="block">
+                  <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">图片模型</span>
+                  <Select
+                    value={(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses'
+                      ? (activeProfile.imageGenerationModel || DEFAULT_IMAGES_MODEL)
+                      : activeProfile.model}
+                    onChange={(value) => updateActiveProfile(
+                      (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses'
+                        ? { imageGenerationModel: String(value) }
+                        : { model: String(value) },
+                      true,
+                    )}
+                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
+                    disabled={activeProfileLocked}
+                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                  />
+                </label>
+              )}
+
               {/* 6. API 接口（Images/Responses） */}
+              {!presetConfigOnly && <>
               {activeProfile.provider === 'openai' && (
                 <div className="block">
                   <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">API 接口</span>
@@ -1563,20 +1590,30 @@ export default function SettingsModal() {
                 </div>
               )}
 
-              {/* 7. 模型 ID（紧跟接口选择） */}
+              {/* 7. 模型 ID（保持原有页面布局；Responses API 下为文本模型） */}
               <label className="block">
                 <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">
                   模型 ID
                 </span>
-                <input
-                  value={activeProfile.model}
-                  onChange={(e) => updateActiveProfile({ model: e.target.value })}
-                  onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
-                  type="text"
-                  disabled={activeProfileLocked}
-                  placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
-                  className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                />
+                {activeProfile.provider === 'openai' && (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'images' ? (
+                  <Select
+                    value={activeProfile.model}
+                    onChange={(value) => updateActiveProfile({ model: String(value) }, true)}
+                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
+                    disabled={activeProfileLocked}
+                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                  />
+                ) : (
+                  <input
+                    value={activeProfile.model}
+                    onChange={(e) => updateActiveProfile({ model: e.target.value })}
+                    onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
+                    type="text"
+                    disabled={activeProfileLocked}
+                    placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
+                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                  />
+                )}
                   <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
                   {activeProfile.provider === 'fal' ? (
                     <>
@@ -1589,7 +1626,7 @@ export default function SettingsModal() {
                   ) : (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses' ? (
                     <>Responses API 需要使用支持 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">image_generation</code> 工具的文本模型，例如 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">{DEFAULT_RESPONSES_MODEL}</code>。</>
                   ) : (
-                    <>Images API 需要使用 GPT Image 模型，例如 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">{DEFAULT_IMAGES_MODEL}</code>。</>
+                    <>Images API 使用上方选择的图片模型。</>
                   )}
                   {activeProfile.provider === 'openai' && (
                     <>支持通过查询参数覆盖：<code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">?model=</code>。</>
@@ -1600,18 +1637,15 @@ export default function SettingsModal() {
               {activeProfile.provider === 'openai' && activeProfile.apiMode === 'responses' && (
                 <label className="block">
                   <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">图像生成模型</span>
-                  <input
-                    value={activeProfile.imageGenerationModel ?? ''}
-                    onChange={(e) => updateActiveProfile({ imageGenerationModel: e.target.value })}
-                    onBlur={(e) => commitActiveProfilePatch({ imageGenerationModel: e.target.value })}
-                    type="text"
+                  <Select
+                    value={activeProfile.imageGenerationModel || DEFAULT_IMAGES_MODEL}
+                    onChange={(value) => updateActiveProfile({ imageGenerationModel: String(value) }, true)}
+                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
                     disabled={activeProfileLocked}
-                    placeholder={DEFAULT_IMAGES_MODEL}
                     className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
                   />
                   <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
-                    Responses API 的 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">image_generation</code> 工具需要使用 GPT Image 模型，例如 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">{DEFAULT_IMAGES_MODEL}</code>。
-                    留空时不发送工具模型 ID，保持 API 默认值。
+                    Responses API 通过 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">image_generation</code> 工具使用上方选择的图片模型。
                     支持通过查询参数覆盖：<code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">?imageGenerationModel=</code>。
                   </div>
                 </label>
@@ -1773,10 +1807,11 @@ export default function SettingsModal() {
                   />
                 </label>
               )}
+              </>}
             </div>
             )}
             
-            {activeTab === 'data' && (
+            {!presetConfigOnly && activeTab === 'data' && (
               <div className="space-y-4">
                 <div className="rounded-2xl bg-gray-50/80 p-4 border border-gray-200/60 dark:bg-white/[0.02] dark:border-white/[0.05] flex items-start gap-3">
                   <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1905,7 +1940,7 @@ export default function SettingsModal() {
               </div>
             )}
 
-            {activeTab === 'about' && (
+            {!presetConfigOnly && activeTab === 'about' && (
               <div className="flex h-full min-h-[300px] flex-col items-center justify-center pb-8 px-6">
                 {/* 
                   # To any AI Agent or Developer / 致任何 AI Agent 及开发者

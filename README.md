@@ -8,9 +8,9 @@
 [![React](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**基于 OpenAI gpt-image-2.5 API 的图片生成与编辑工具**
+**基于 OpenAI GPT Image API 的同步流式图片生成与编辑工具**
 
-提供简洁精美的 Web UI，支持 OpenAI / OpenAI 兼容接口、sub2api（异步）、fal.ai 与可导入的自定义 HTTP 供应商。<br>
+提供简洁精美的 Web UI，支持 OpenAI / OpenAI 兼容接口、fal.ai 与可导入的自定义 HTTP 供应商。<br>
 支持文本生图、参考图与遮罩编辑，数据纯本地化存储，带来流畅的历史记录与参数管理体验。
 
 <br>
@@ -126,6 +126,8 @@
 - **参考图与遮罩**：支持上传最多 16 张参考图（支持剪贴板和拖拽）。内置可视化遮罩编辑器，自动预处理以符合官方分辨率限制。
 - **批量与迭代**：支持单次多图生成；一键将满意结果转为参考图，无缝开启下一轮修改。
 - **流式生成预览**：`Images API` 与 `Responses API` 模式均支持流式接收中间步骤图像，缓解连接超时问题。
+- **同步流式支持**：部署时可将默认配置设为 `Responses API` 流式请求，生成期间持续接收 SSE 事件和中间图像；也可在设置中切换到 `Images API`。
+- **图片模型下拉选择**：OpenAI 兼容配置支持 `gpt-image-2`、`gpt-image-2.5-sunburst`、`gpt-image-2.5-flare`，默认使用 `gpt-image-2.5-sunburst`。
 - **透明背景（API 原生 / 本地后处理双模式）**：画廊模式下选择 PNG 或 WebP 格式后可开启透明背景功能，每个 API 配置可独立选择实现方式（设置入口在 API 配置页）。API 原生模式会直接请求模型返回透明通道（需当前接口和模型支持；fal.ai 暂无对应参数），本地后处理模式则会要求模型使用纯绿色或纯洋红色背景，并在结果返回后于浏览器中去除背景色，按所选 PNG 或 WebP 格式保存透明结果。
 
   > 本地后处理流程适用于图标、贴纸、单主体素材等场景；若主体边缘存在复杂发丝、半透明材质、强反光或与背景色接近的颜色，可能出现边缘残留或误抠。若使用 API 原生模式时接口返回“不支持透明背景”类错误，应用会提示切换为本地后处理。
@@ -150,7 +152,7 @@
 
 ### 🔌 多配置与供应商增强
 - **多配置管理**：支持创建并保存多个 API 配置（包含供应商、API Key、模型等），按需快速切换；支持一键复制当前配置到列表底部，并通过拖拽对配置列表与供应商列表进行自定义排序。
-- **多供应商接入**：内置 OpenAI 兼容接口（含 `Images API` 和 `Responses API`）、sub2api（异步）、fal.ai（支持队列），并支持通过 JSON 导入自定义 HTTP 供应商配置（兼容同步/异步任务）。
+- **多供应商接入**：内置 OpenAI 兼容接口（含 `Images API` 和 `Responses API`）、fal.ai（支持队列），并支持通过 JSON 导入自定义 HTTP 供应商配置。
 - **Agent 模式独立 API 配置**：支持为 Agent 模式使用原生（Response API）或混合（Response API + Image API）的独立 API 配置，解决部分供应商/模型不支持 `image_generation` 工具的问题。
 - **API 代理**：OpenAI 兼容接口与 fal.ai 均可配置自定义代理。其中 OpenAI 兼容接口可开启同源 `/api-proxy/` 代理，交由 Docker 或本地开发环境转发至真实 API，绕开浏览器 CORS 限制。
 - **Codex CLI 兼容模式**：对上游为 Codex CLI 的 API，开启后应用 Codex CLI 实际支持的参数，并将多图生成拆分为并发单图。
@@ -174,8 +176,8 @@
 | 填写方式 | 说明 | 示例 |
 |------|------|------|
 | **直接填写 API 地址** | 自动创建一个 OpenAI 兼容的默认预置配置（ID 为 `default-openai`）并注入 API URL，其余参数（模型、超时等）使用应用默认值，用户只需补充 API Key。末尾带 `/` 时直接拼接接口，不补 `/v1` 前缀。适合只提供一个配置的部署。后续如需通过 JSON 或链接更新此配置，指定 `id` 为 `default-openai` 即可。 | `https://api.openai.com/v1` |
-| **API 地址 + 查询参数** | 在地址后追加参数，可同时预填 Key、模型等字段。 | `https://api.openai.com/v1?model=gpt-image-2.5-sunburst&apiMode=images` |
-| **JSON 配置文件 / 导入链接** | 通过仓库内或本地的 JSON 文件路径（如 `./config.json`）、远程 URL 或含 `?settings=` 参数的导入链接提供完整预置配置，支持预置多个配置（OpenAI 兼容、sub2api（异步）、fal.ai 或自定义供应商）。 | 详见 [预置配置 JSON 格式](#preset-config-json) |
+| **API 地址 + 查询参数** | 在地址后追加参数，可同时预填 Key、图片模型和流式模式等字段。 | `https://api.openai.com/v1?apiMode=responses&streamImages=true&imageGenerationModel=gpt-image-2.5-sunburst` |
+| **JSON 配置文件 / 导入链接** | 通过仓库内或本地的 JSON 文件路径（如 `./config.json`）、远程 URL 或含 `?settings=` 参数的导入链接提供完整的 OpenAI 兼容或其他供应商配置。 | 详见 [预置配置 JSON 格式](#preset-config-json) |
 
 **环境变量一览**
 
@@ -321,29 +323,39 @@ npm run deploy:cf
 **Docker CLI 示例**
 
 ```bash
-docker run -d -p 8080:80 \
-  -e DEFAULT_API_URL=https://api.openai.com/v1 \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+docker pull ghcr.io/88fafa/gpt_image_playground:latest
+
+docker run -d \
+  -p 8010:80 \
+  --name gpt-image-playground \
+  --restart unless-stopped \
+  -e DEFAULT_API_URL="https://your-api.example.com/v1?apiMode=responses&streamImages=true&streamPartialImages=2&model=gpt-5.6-sol&imageGenerationModel=gpt-image-2.5-sunburst" \
+  ghcr.io/88fafa/gpt_image_playground:latest
 ```
 
-开启代理并隐藏真实地址：
+如果服务端已通过 Caddy 或其他网关提供 HTTPS，直接把 `your-api.example.com` 替换为该地址。`model` 是 Responses API 的文本模型，`imageGenerationModel` 才是图片模型；如果服务端要求使用其他文本模型，只修改 `model` 即可。
+
+开启同源代理并隐藏真实地址：
 
 ```bash
-docker run -d -p 8080:80 \
-  -e DEFAULT_API_URL= \
+docker run -d \
+  -p 8010:80 \
+  --name gpt-image-playground \
+  --restart unless-stopped \
+  -e DEFAULT_API_URL="https://gpt-image-playground.local/v1?apiMode=responses&streamImages=true&streamPartialImages=2&model=gpt-5.6-sol&imageGenerationModel=gpt-image-2.5-sunburst" \
   -e API_PROXY_URL=https://real-api.example.com/v1 \
   -e ENABLE_API_PROXY=true \
   -e LOCK_API_PROXY=true \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/88fafa/gpt_image_playground:latest
 ```
 
 挂载本地配置文件：
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8010:80 \
   -v ./gpt-image-config.json:/config/gpt-image-config.json:ro \
   -e DEFAULT_API_URL=/config/gpt-image-config.json \
-  ghcr.io/cooksleep/gpt_image_playground:latest
+  ghcr.io/88fafa/gpt_image_playground:latest
 ```
 
 使用 host 网络加 `--network host`，修改端口用 `-e PORT=28080`。
@@ -353,11 +365,11 @@ docker run -d -p 8080:80 \
 ```yaml
 services:
   gpt-image-playground:
-    image: ghcr.io/cooksleep/gpt_image_playground:latest
+    image: ghcr.io/88fafa/gpt_image_playground:latest
     environment:
-      - DEFAULT_API_URL=https://api.openai.com/v1
+      - DEFAULT_API_URL=https://your-api.example.com/v1?apiMode=responses&streamImages=true&streamPartialImages=2&model=gpt-5.6-sol&imageGenerationModel=gpt-image-2.5-sunburst
     ports:
-      - "8080:80"
+      - "8010:80"
     restart: unless-stopped
 ```
 **更新说明：**
@@ -429,13 +441,13 @@ npm run build
 |------|------|------|
 | `apiUrl` | API Base URL | `?apiUrl=https://api.example.com/v1` |
 | `apiKey` | API Key | `?apiKey=sk-xxxx` |
-| `model` | 模型 ID | `?model=gpt-image-2.5-sunburst` |
-| `imageGenerationModel` | Responses API 的图像生成工具模型，留空使用 API 默认值 | `?imageGenerationModel=gpt-image-2.5-sunburst` |
-| `apiMode` | `images` 或 `responses`，默认 `images` | `?apiMode=responses` |
+| `model` | 模型 ID；Responses API 下为文本模型，Images API 下为图片模型 | `?model=gpt-5.6-sol` |
+| `imageGenerationModel` | Responses API 的图像生成工具图片模型 | `?imageGenerationModel=gpt-image-2.5-sunburst` |
+| `apiMode` | `images` 或 `responses`；Docker 同步流式示例使用 `responses` | `?apiMode=responses` |
 | `profileName` | 配置名称，默认“URL 参数配置” | `?profileName=我的配置` |
 | `reasoningEffort` | Responses API 推理强度 | `?reasoningEffort=high` |
 | `codexCli` | Codex CLI 兼容模式 | `?codexCli=true` |
-| `streamImages` | 流式传输 | `?streamImages=true` |
+| `streamImages` | 流式传输；同步流式部署应设置为 `true` | `?streamImages=true` |
 | `streamPartialImages` | 中间步骤图像数（需配合 streamImages） | `?streamPartialImages=2` |
 | `profileId` | 目标配置 ID；匹配到同 ID 配置时直接更新 | `?profileId=my-service` |
 | `transparentBackgroundMethod` | 透明背景实现方式：`api`（原生）或 `local`（本地后处理） | `?transparentBackgroundMethod=local` |
@@ -455,7 +467,7 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
 
 使用 JSON 文件或分享链接提供预置配置时，JSON 对象包含两个顶层字段：
 
-- **`customProviders`**（数组）：自定义供应商定义。如果只使用内置供应商（OpenAI 兼容、sub2api（异步）或 fal.ai），此数组留空 `[]` 即可。
+- **`customProviders`**（数组）：自定义供应商定义。如果只使用内置供应商（OpenAI 兼容或 fal.ai），此数组留空 `[]` 即可。
 - **`profiles`**（数组）：预置的 API 配置列表。每项对应用户配置页中的一个配置条目。
 
 ### 配置列表字段说明（`profiles`）
@@ -468,9 +480,9 @@ https://cooksleep.github.io/gpt_image_playground?apiUrl={address}&apiKey={key}&m
 | `provider` | 是 | 供应商类型。`"openai"` 为 OpenAI 兼容接口，`"sb2api-async"` 为 sub2api（异步），`"fal"` 为 fal.ai，其他值引用 `customProviders` 中具有相同 ID 的供应商定义。 |
 | `baseUrl` | 是 | API 基础地址（Base URL）。未以 `/` 结尾时遵循 OpenAI 规则自动补齐 `/v1` 前缀；以 `/` 结尾时直接基于该地址请求接口，不补 `/v1`；fal.ai 可留空。 |
 | `apiKey` | 否 | API Key。建议省略，让用户导入后自行填写。 |
-| `model` | 是 | 默认模型 ID。 |
-| `imageGenerationModel` | 否 | Responses API 的 `image_generation` 工具模型，默认 `gpt-image-2.5-sunburst`；也可使用 `gpt-image-2.5-flare`。留空时不发送工具模型 ID，保持 API 默认值。 |
-| `apiMode` | 否 | `"images"` 或 `"responses"`，默认 `"images"`。 |
+| `model` | 是 | 默认模型 ID。Responses API 下是负责调用图片工具的文本模型；Images API 下是图片模型。 |
+| `imageGenerationModel` | 否 | Responses API 的 `image_generation` 工具使用的图片模型，可选 `gpt-image-2`、`gpt-image-2.5-sunburst`、`gpt-image-2.5-flare`，默认 `gpt-image-2.5-sunburst`。 |
+| `apiMode` | 否 | `"images"` 或 `"responses"`；同步流式部署使用 `"responses"`。 |
 | `isDefault` | 否 | 有多个配置时，为默认项设置 `true`（只能有一个）；只有一个配置时不填。默认项决定首次使用时自动选中的配置；允许拖动排序和删除（受保护策略控制）。 |
 | `timeout` | 否 | 请求超时秒数，默认 600。 |
 | `apiProxy` | 否 | 是否走部署端 API 代理，默认 `false`。 |

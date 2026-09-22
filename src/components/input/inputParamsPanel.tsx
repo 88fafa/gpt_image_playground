@@ -1,5 +1,6 @@
 import type { ApiProfile, TaskParams } from '../../types'
 import { dismissAllTooltips } from '../../lib/tooltipDismiss'
+import { isPresetConfigOnlyEnabled } from '../../lib/presetConfig'
 import Select from '../Select'
 import ButtonTooltip from './buttonTooltip'
 
@@ -92,6 +93,8 @@ export default function InputParamsPanel({
   qualityHint: HintTooltipState
   onOpenSizePicker: () => void
 }) {
+  const presetConfigOnly = isPresetConfigOnlyEnabled()
+
   return (
     <div className={`grid ${cols} gap-2 text-xs flex-1`}>
       <label
@@ -167,7 +170,7 @@ export default function InputParamsPanel({
       </label>
       {showTransparentOutputControl && (
         <label
-          className="relative flex flex-col gap-0.5"
+          className="relative order-last flex flex-col gap-0.5"
           onMouseEnter={transparentOutputHint.show}
           onMouseLeave={transparentOutputHint.hide}
           onTouchStart={transparentOutputHint.startTouch}
@@ -195,11 +198,11 @@ export default function InputParamsPanel({
           />
           <ButtonTooltip
             visible={transparentOutputHint.visible}
-            text="实现方式可在设置的 API 配置中选择"
+            text="开启后请求生成透明背景，建议使用 PNG 或 WebP 格式"
           />
         </label>
       )}
-      {!showTransparentOutputControl && (
+      {!showTransparentOutputControl && !presetConfigOnly && (
         <label
           className="relative flex flex-col gap-0.5"
           onMouseEnter={compressionHint.show}
@@ -231,7 +234,7 @@ export default function InputParamsPanel({
           />
         </label>
       )}
-      <label
+      {!presetConfigOnly && <label
         className="relative flex flex-col gap-0.5"
         onMouseEnter={moderationHint.show}
         onMouseLeave={moderationHint.hide}
@@ -260,7 +263,7 @@ export default function InputParamsPanel({
           visible={moderationDisabled && moderationHint.visible}
           text="fal.ai 不支持审核参数"
         />
-      </label>
+      </label>}
       <label
         className="relative flex flex-col gap-0.5"
         onMouseEnter={() => { showAgentNHint(); streamConcurrentHint.show() }}

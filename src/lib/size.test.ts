@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateImageSize, normalizeCodexCliImageSize, prependCodexCliSizePrompt, stripInjectedCodexCliSizePrompt } from './size'
+import { appendImageRatioPrompt, calculateImageSize, normalizeCodexCliImageSize, prependCodexCliSizePrompt, stripInjectedCodexCliSizePrompt } from './size'
 
 describe('calculateImageSize', () => {
   it('uses common 16:9 display resolutions for the built-in tiers', () => {
@@ -44,5 +44,16 @@ describe('Codex CLI size compatibility', () => {
     expect(stripInjectedCodexCliSizePrompt('Generate at 2048x2048 resolution. Draw a cat.', 'Draw a cat.', '1024x1024')).toBe('Generate at 2048x2048 resolution. Draw a cat.')
     expect(stripInjectedCodexCliSizePrompt('Generate at 1024x1024 resolution. Draw a cat.', 'Generate at 1024x1024 resolution. Draw a cat.', '1024x1024')).toBe('Generate at 1024x1024 resolution. Draw a cat.')
     expect(stripInjectedCodexCliSizePrompt('Generate at 1024x1024 resolution. Draw a cat.', 'Draw a cat.', 'auto')).toBe('Generate at 1024x1024 resolution. Draw a cat.')
+  })
+})
+
+describe('standard image prompt ratio hint', () => {
+  it('appends the simplified ratio for explicit pixel sizes', () => {
+    expect(appendImageRatioPrompt('Draw a portrait.', '768x1024')).toBe('Draw a portrait.\n\n请严格按照 3:4 的画面比例生成图片。')
+  })
+
+  it('does not duplicate an existing ratio or add one for auto size', () => {
+    expect(appendImageRatioPrompt('Use a 3:4 composition.', '768x1024')).toBe('Use a 3:4 composition.')
+    expect(appendImageRatioPrompt('Draw a portrait.', 'auto')).toBe('Draw a portrait.')
   })
 })

@@ -24,7 +24,7 @@ import {
 } from './imageApiShared'
 import { getImageGenerationModel } from './imageModels'
 import { isEventStreamResponse, readJsonServerSentEvents } from './serverSentEvents'
-import { prependCodexCliSizePrompt } from './size'
+import { appendImageRatioPrompt, prependCodexCliSizePrompt } from './size'
 
 function getStreamPartialImages(profile: ApiProfile): number {
   return profile.streamPartialImages ?? DEFAULT_STREAM_PARTIAL_IMAGES
@@ -484,9 +484,10 @@ async function callImagesApiSingle(opts: CallApiOptions, profile: ApiProfile): P
   const sizePrompt = profile.codexCli && !opts.skipCodexCliSizePrompt
     ? prependCodexCliSizePrompt(originalPrompt, params.size)
     : originalPrompt
+  const promptWithRatio = profile.codexCli ? sizePrompt : appendImageRatioPrompt(sizePrompt, params.size)
   const prompt = profile.codexCli && !opts.settings.allowPromptRewrite
-    ? `${PROMPT_REWRITE_GUARD_PREFIX}\n${sizePrompt}`
-    : sizePrompt
+    ? `${PROMPT_REWRITE_GUARD_PREFIX}\n${promptWithRatio}`
+    : promptWithRatio
   const isEdit = inputImageDataUrls.length > 0
   const mime = MIME_MAP[params.output_format] || 'image/png'
   const proxyConfig = readClientDevProxyConfig()
@@ -685,9 +686,10 @@ function createCustomProviderContext(opts: CallApiOptions, profile: ApiProfile) 
   const sizePrompt = profile.codexCli && !opts.skipCodexCliSizePrompt
     ? prependCodexCliSizePrompt(opts.prompt, opts.params.size)
     : opts.prompt
+  const promptWithRatio = profile.codexCli ? sizePrompt : appendImageRatioPrompt(sizePrompt, opts.params.size)
   const prompt = profile.codexCli && !opts.settings.allowPromptRewrite
-    ? `${PROMPT_REWRITE_GUARD_PREFIX}\n${sizePrompt}`
-    : sizePrompt
+    ? `${PROMPT_REWRITE_GUARD_PREFIX}\n${promptWithRatio}`
+    : promptWithRatio
   const params = {
     ...opts.params,
     ...(profile.codexCli ? { size: undefined, quality: undefined } : {}),
@@ -1010,6 +1012,7 @@ async function callResponsesImageApiSingle(opts: CallApiOptions, profile: ApiPro
   const requestPrompt = profile.codexCli && !opts.skipCodexCliSizePrompt
     ? prependCodexCliSizePrompt(prompt, params.size)
     : prompt
+  const requestPromptWithRatio = appendImageRatioPrompt(requestPrompt, params.size)
   const mime = MIME_MAP[params.output_format] || 'image/png'
   const proxyConfig = readClientDevProxyConfig()
   const useApiProxy = shouldUseApiProxy(profile.apiProxy, proxyConfig)
@@ -1029,7 +1032,7 @@ async function callResponsesImageApiSingle(opts: CallApiOptions, profile: ApiPro
 
     const body: Record<string, unknown> = {
       model: profile.model,
-      input: createResponsesInput(requestPrompt, inputImageDataUrls, opts.settings.allowPromptRewrite),
+      input: createResponsesInput(requestPromptWithRatio, inputImageDataUrls, opts.settings.allowPromptRewrite),
       tools: [createResponsesImageTool(params, inputImageDataUrls.length > 0, profile, opts.maskDataUrl, opts.nativeTransparentBackground)],
       tool_choice: 'required',
     }
