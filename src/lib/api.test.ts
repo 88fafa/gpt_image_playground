@@ -759,6 +759,8 @@ describe('callImageApi', () => {
     const [, init] = fetchMock.mock.calls[0]
     const body = JSON.parse(String((init as RequestInit).body))
     expect(body.stream).toBe(true)
+    expect(body.tools).toEqual([expect.objectContaining({ type: 'image_generation' })])
+    expect(body).not.toHaveProperty('tool_choice')
     expect(body.tools[0].partial_images).toBe(1)
     expect(partialImages).toEqual(['data:image/png;base64,cGFydGlhbA=='])
     expect(result).toMatchObject({

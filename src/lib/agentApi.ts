@@ -799,7 +799,6 @@ export async function callBatchImageSingle(opts: {
       model: profile.model,
       input,
       tools: [tool],
-      tool_choice: 'required',
     }
     if (profile.reasoningEffort) body.reasoning = { effort: profile.reasoningEffort }
     if (profile.streamImages) {

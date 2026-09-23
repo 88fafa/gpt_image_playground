@@ -43,8 +43,7 @@ Content-Type: application/json
     "quality": "auto",
     "background": "transparent",
     "partial_images": 2
-  }],
-  "tool_choice": "required"
+  }]
 }
 
 ## Images API 文生图
@@ -132,8 +131,7 @@ Content-Type: application/json
     "quality": "auto",
     "background": "transparent",
     "partial_images": 2
-  }],
-  "tool_choice": "required"
+  }]
 }`}</pre>
             <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">客户端应持续读取流式事件，直到收到最终图像或错误事件。不要用固定的短超时中断请求。</p>
             <h3 className="pt-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Images API 文生图</h3>

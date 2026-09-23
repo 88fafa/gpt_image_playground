@@ -1034,7 +1034,6 @@ async function callResponsesImageApiSingle(opts: CallApiOptions, profile: ApiPro
       model: profile.model,
       input: createResponsesInput(requestPromptWithRatio, inputImageDataUrls, opts.settings.allowPromptRewrite),
       tools: [createResponsesImageTool(params, inputImageDataUrls.length > 0, profile, opts.maskDataUrl, opts.nativeTransparentBackground)],
-      tool_choice: 'required',
     }
     if (profile.reasoningEffort) body.reasoning = { effort: profile.reasoningEffort }
     if (profile.streamImages) {
