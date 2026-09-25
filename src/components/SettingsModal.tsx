@@ -67,6 +67,13 @@ function newId(prefix: string) {
 }
 
 const ADD_CUSTOM_PROVIDER_VALUE = '__add_custom_provider__'
+const CUSTOM_RESPONSES_MODEL_VALUE = '__custom_responses_model__'
+const RESPONSES_MODEL_OPTIONS = [
+  { label: 'gpt-5.5', value: 'gpt-5.5' },
+  { label: 'gpt-5.6-terra', value: 'gpt-5.6-terra' },
+  { label: 'gpt-5.6-sol', value: 'gpt-5.6-sol' },
+  { label: 'gpt-6-sol', value: 'gpt-6-sol' },
+]
 const COPY_IMPORT_URL_OPTIONS_STORAGE_KEY = 'gpt-image-playground.copy-import-url-options'
 
 const DEFAULT_COPY_IMPORT_URL_OPTIONS = {
@@ -232,6 +239,9 @@ export default function SettingsModal() {
   const activeProfile = draft.profiles.find((profile) => profile.id === draft.activeProfileId) ?? draft.profiles[0] ?? getActiveApiProfile(draft)
   const activePresetDescription = getPresetProfileDescription(activeProfile.id)
   const activeProfileLocked = isPresetProfileLocked(activeProfile.id)
+  const isResponsesOpenAIProfile = activeProfile.provider === 'openai' && (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses'
+  const isPresetResponsesModel = RESPONSES_MODEL_OPTIONS.some((option) => option.value === activeProfile.model)
+  const responsesModelSelectValue = isPresetResponsesModel ? activeProfile.model : CUSTOM_RESPONSES_MODEL_VALUE
   const activeProviderIsOpenAICompatible = isOpenAICompatibleProvider(draft, activeProfile.provider)
   const activeProviderUsesApiUrl = activeProviderIsOpenAICompatible || activeProfile.provider === 'fal'
   const activeCustomProvider = getCustomProviderDefinition(draft, activeProfile.provider)
@@ -1568,21 +1578,55 @@ export default function SettingsModal() {
                   </div>
                 </div>
               )}
+              </>}
 
-              {/* 7. 模型 ID（保持原有页面布局；Responses API 下为文本模型） */}
+              {/* 7. 模型 ID（Responses API 下为外层文本模型，图片模型在输入栏选择） */}
               {!(activeProfile.provider === 'openai' && (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'images') && <label className="block">
                 <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">
-                  模型 ID
+                  {isResponsesOpenAIProfile ? 'Responses 外层模型' : '模型 ID'}
                 </span>
-                <input
-                  value={activeProfile.model}
-                  onChange={(e) => updateActiveProfile({ model: e.target.value })}
-                  onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
-                  type="text"
-                  disabled={activeProfileLocked}
-                  placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
-                  className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                />
+                {isResponsesOpenAIProfile ? (
+                  <>
+                    <Select
+                      value={responsesModelSelectValue}
+                      onChange={(value) => {
+                        if (value === CUSTOM_RESPONSES_MODEL_VALUE) {
+                          updateActiveProfile({ model: '' })
+                          return
+                        }
+                        updateActiveProfile({ model: value }, true)
+                      }}
+                      options={[
+                        ...RESPONSES_MODEL_OPTIONS,
+                        { label: '自定义', value: CUSTOM_RESPONSES_MODEL_VALUE },
+                      ]}
+                      disabled={activeProfileLocked}
+                      showValueTooltips
+                      className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                    />
+                    {!isPresetResponsesModel && (
+                      <input
+                        value={activeProfile.model}
+                        onChange={(e) => updateActiveProfile({ model: e.target.value })}
+                        onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
+                        type="text"
+                        disabled={activeProfileLocked}
+                        placeholder={DEFAULT_RESPONSES_MODEL}
+                        className="mt-2 w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <input
+                    value={activeProfile.model}
+                    onChange={(e) => updateActiveProfile({ model: e.target.value })}
+                    onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
+                    type="text"
+                    disabled={activeProfileLocked}
+                    placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
+                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                  />
+                )}
                   <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
                   {activeProfile.provider === 'fal' ? (
                     <>
@@ -1603,6 +1647,7 @@ export default function SettingsModal() {
                 </div>
               </label>}
 
+              {!presetConfigOnly && <>
               {(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses' && activeProfile.provider === 'openai' && (
                 <div className="block">
                   <div className="mb-1.5 flex items-center justify-between gap-3">

@@ -12,6 +12,46 @@
 
 </div>
 
+## 小白用户：安装生图 Skill
+
+如果你使用 Codex App、Claude Code、WorkBuddy、OpenCode 或 Trae，推荐先安装本项目配套的同步流式生图 Skill。安装后，智能体可以按照统一方式处理文生图、图片编辑、多张参考图、比例和流式返回。
+
+### 最简单的使用方式
+
+不需要手动复制文件。打开网页右上角的「API 请求」，把开头的「发给智能体的一句话」复制给你的智能体。也可以直接复制下面这句话：
+
+```text
+请安装并使用这个图片生成 Skill：https://github.com/88fafa/gpt-image-streaming-skill 。安装或读取完成后，帮我配置并使用同步流式图片生成 API。请先显示当前 Base URL（包含 /v1）并询问我是否继续使用；如果已有 API Key，请询问我是否继续使用当前 API Key，但不要显示 Key 的具体内容。只有缺少或拒绝复用时，才向我索取新的 Base URL 或 API Key。
+```
+
+智能体会先询问是否继续使用当前 Base URL 和 API Key。你确认后即可直接生图；API Key 只用于当前会话，不要发到公开群聊，也不要写入 URL、代码或日志。
+
+### Codex App 安装方式
+
+在 Codex App 中发送上面的完整句子，或发送：
+
+```text
+请从 https://github.com/88fafa/gpt-image-streaming-skill 安装 gpt-image-streaming Skill。安装完成后，使用这个 Skill 配置同步流式图片生成 API。
+```
+
+安装完成后，在下一条消息中输入 `$gpt-image-streaming`，或直接说“使用生图 Skill 生成一张图片”。然后按提示提供 Base URL 和 API Key。
+
+### 其他智能体安装方式
+
+在 Skill、插件或工作流设置中导入仓库：
+
+```text
+https://github.com/88fafa/gpt-image-streaming-skill
+```
+
+如果智能体不支持从 GitHub 自动导入，就下载仓库压缩包，把其中的 `SKILL.md` 和 `agents/openai.yaml` 放入该智能体支持的 Skill 目录，并将目录命名为 `gpt-image-streaming`。不同智能体的目录位置不同，请以该智能体的 Skill 文档为准。
+
+安装后发送：
+
+```text
+请使用 gpt-image-streaming Skill 配置同步流式图片生成。先询问我是否复用当前 Base URL 和 API Key，再开始生图。
+```
+
 ## ❤️ 赞助商
 
 <table>
@@ -73,7 +113,7 @@ docker rm gpt-image-playground
 
 页面右上角的「API 请求」提供可直接使用的同步流式生图与图片编辑示例，并包含可复制给常用智能体的 Skill 内容。接口地址和图片模型会根据当前预置配置显示；API Key 由调用者自行填写。
 
-也可以直接把页面中的「一句话交给智能体」发送给 Codex App、Claude Code、WorkBuddy、OpenCode 或 Trae。智能体会先向你索取 Base URL（包含 `/v1`）和 API Key，配置后即可使用同步流式接口生图；不要把 API Key 写入代码、URL、日志或提交到仓库。仓库同时提供可复用 Skill：[`skills/gpt-image-streaming/SKILL.md`](skills/gpt-image-streaming/SKILL.md)。
+如果你是第一次使用，请先看网页 API 说明开头的「小白用户：安装生图 Skill」。最简单的方法是复制其中的一句话交给 Codex App、Claude Code、WorkBuddy、OpenCode 或 Trae；需要手动安装时，可使用独立仓库 [gpt-image-streaming-skill](https://github.com/88fafa/gpt-image-streaming-skill)。仓库内也保留了 Skill 源文件：[`skills/gpt-image-streaming/SKILL.md`](skills/gpt-image-streaming/SKILL.md)。
 
 ### Responses API 同步流式生图
 
