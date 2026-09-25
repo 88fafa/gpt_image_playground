@@ -1,0 +1,4 @@
+interface:
+  display_name: "GPT 图片流式生成"
+  short_description: "通过同步流式 API 生成和编辑图片"
+  default_prompt: "使用 $gpt-image-streaming 配置图片流式生成 API，并生成一张图片。"

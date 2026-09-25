@@ -73,6 +73,8 @@ docker rm gpt-image-playground
 
 页面右上角的「API 请求」提供可直接使用的同步流式生图与图片编辑示例，并包含可复制给常用智能体的 Skill 内容。接口地址和图片模型会根据当前预置配置显示；API Key 由调用者自行填写。
 
+也可以直接把页面中的「一句话交给智能体」发送给 Codex App、Claude Code、WorkBuddy、OpenCode 或 Trae。智能体会先向你索取 Base URL（包含 `/v1`）和 API Key，配置后即可使用同步流式接口生图；不要把 API Key 写入代码、URL、日志或提交到仓库。仓库同时提供可复用 Skill：[`skills/gpt-image-streaming/SKILL.md`](skills/gpt-image-streaming/SKILL.md)。
+
 ### Responses API 同步流式生图
 
 `POST /v1/responses` 示例：
@@ -96,7 +98,9 @@ docker rm gpt-image-playground
 }
 ```
 
-请求时使用 `Authorization: Bearer YOUR_API_KEY`。将 `model` 设置为上游 Responses 文本模型，将工具中的 `model` 设置为要使用的图片模型。`stream: true` 启用 SSE 流式响应；`partial_images` 控制中间图像数量。透明背景使用 `background: "transparent"`，建议搭配 PNG 或 WebP。图片比例要同时反映在 `size` 和提示词中。
+请求时使用 `Authorization: Bearer YOUR_API_KEY`。将 `model` 设置为 Responses API 文本模型，将工具中的 `model` 设置为要使用的图片模型。`stream: true` 启用 SSE 流式响应；`partial_images` 控制中间图像数量。透明背景使用 `background: "transparent"`，建议搭配 PNG 或 WebP。图片比例要同时反映在 `size` 和提示词中。
+
+客户端需要持续读取 SSE，不要使用 30 秒、60 秒等短超时。中间图事件为 `response.image_generation_call.partial_image`，最终结果通常在 `response.output_item.done` 或 `response.completed` 中返回；应以最终事件中的图片为准。
 
 ### Images API 生图与编辑
 

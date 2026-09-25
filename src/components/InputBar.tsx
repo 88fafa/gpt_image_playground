@@ -94,6 +94,7 @@ export default function InputBar() {
   const params = useStore((s) => s.params)
   const setParams = useStore((s) => s.setParams)
   const settings = useStore((s) => s.settings)
+  const setSettings = useStore((s) => s.setSettings)
   const reusedTaskApiProfileId = useStore((s) => s.reusedTaskApiProfileId)
   const setShowSettings = useStore((s) => s.setShowSettings)
   const setLightboxImageId = useStore((s) => s.setLightboxImageId)
@@ -461,6 +462,7 @@ export default function InputBar() {
   }, [setPrompt])
   const activeProvider = activeProfile.provider
   const isFalProvider = activeProvider === 'fal'
+  const hasImageModelControl = activeProvider === 'openai'
   const agentAutoImageCount = appMode === 'agent'
   const moderationDisabled = isFalProvider
   const transparentOutputAvailable = appMode === 'gallery'
@@ -505,6 +507,15 @@ export default function InputBar() {
   const qualityHint = useHintTooltip({ enabled: () => activeProfile.codexCli || isFalProvider })
   const nLimitHint = useHintTooltip({ autoHideMs: 2000 })
   const streamConcurrentHint = useHintTooltip({ enabled: () => streamConcurrentByN })
+  const handleImageModelChange = useCallback((model: string) => {
+    setSettings({
+      profiles: settings.profiles.map((profile) => profile.id === activeProfile.id
+        ? activeProfile.apiMode === 'responses'
+          ? { ...profile, imageGenerationModel: model }
+          : { ...profile, model }
+        : profile),
+    })
+  }, [activeProfile.apiMode, activeProfile.id, setSettings, settings.profiles])
   const maskTargetImage = maskDraft
     ? inputImages.find((img) => img.id === maskDraft.targetImageId) ?? null
     : null
@@ -1557,6 +1568,7 @@ export default function InputBar() {
       sizeHint={sizeHint}
       qualityHint={qualityHint}
       onOpenSizePicker={() => setShowSizePicker(true)}
+      onImageModelChange={handleImageModelChange}
     />
   )
 
@@ -1774,7 +1786,9 @@ export default function InputBar() {
           <div className="mt-3">
             {/* 桌面端布局 */}
             <div className="hidden sm:flex items-end justify-between gap-3">
-              {renderParams('grid-cols-6')}
+              {renderParams(hasImageModelControl
+                ? 'grid-cols-[minmax(0,1fr)_minmax(220px,2fr)_repeat(4,minmax(0,1fr))]'
+                : 'grid-cols-6')}
 
               <div className="flex gap-2 flex-shrink-0 mb-0.5">
                 <div
@@ -1833,7 +1847,9 @@ export default function InputBar() {
             <div className="sm:hidden flex flex-col gap-2">
               <div className={`collapse-section${mobileCollapsed ? ' collapsed' : ''}`}>
                 <div className="collapse-inner">
-                  {renderParams('grid-cols-2')}
+                  {renderParams(hasImageModelControl
+                    ? 'grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]'
+                    : 'grid-cols-2')}
                   <div className="h-2" />
                 </div>
               </div>

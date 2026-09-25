@@ -261,6 +261,9 @@ export default function DetailModal() {
   const taskProviderName = taskProvider ? getApiProviderLabel(settings, taskProvider) : '未知'
   const taskProfileName = task.apiProfileName || '未知'
   const taskModel = task.apiModel || '未知'
+  const imageGenerationModel = task.imageGenerationModel?.trim()
+    || (task.apiMode === 'images' ? task.apiModel?.trim() : '')
+    || (task.apiMode === 'responses' ? '未记录' : '')
   const showSourceInfo = Boolean(task.apiProvider || task.apiProfileName || task.apiModel)
   const isFalReconnecting = task.status === 'error' && task.falRecoverable
   const isCustomReconnecting = task.status === 'error' && task.customRecoverable
@@ -962,6 +965,9 @@ export default function DetailModal() {
                 <div className="mt-0.5 overflow-x-auto hide-scrollbar whitespace-nowrap mask-edge-r pr-2">
                   <span className="font-medium text-gray-700 dark:text-gray-200">{taskProviderName}</span>
                   <span className="text-gray-400 dark:text-gray-500"> · {taskProfileName} · {taskModel}</span>
+                  {imageGenerationModel && isOpenAiTask && (
+                    <span className="text-blue-500 dark:text-blue-400"> · 图片模型 · {imageGenerationModel}</span>
+                  )}
                 </div>
               </div>
             )}

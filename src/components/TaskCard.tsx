@@ -325,6 +325,10 @@ export default function TaskCard({
 
   const defaultModelForProvider = task.apiProvider === 'fal' ? DEFAULT_FAL_MODEL : DEFAULT_IMAGES_MODEL
   const showModel = task.apiModel && task.apiModel !== defaultModelForProvider
+  const imageModel = task.imageGenerationModel?.trim()
+    || (task.apiMode === 'images' ? task.apiModel?.trim() : '')
+    || (task.apiMode === 'responses' ? '未记录' : '')
+  const showImageModel = Boolean(imageModel && task.apiProvider !== 'fal' && (task.apiMode === 'responses' || task.apiMode === 'images'))
   const isInterrupted = task.status === 'error' && task.error === '已停止生成。'
 
   return (
@@ -584,6 +588,19 @@ export default function TaskCard({
                   <span className="truncate max-w-[8rem]">
                     {task.apiModel}
                   </span>
+                </span>
+              )}
+              {/* Image model */}
+              {showImageModel && (
+                <span
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs flex-shrink-0"
+                  title={imageModel}
+                >
+                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 3v18M3 12h18M5.64 5.64l12.72 12.72M18.36 5.64L5.64 18.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                  <span className="text-blue-500/80 dark:text-blue-300/80">图片模型</span>
+                  <span className="truncate max-w-[10rem]">{imageModel}</span>
                 </span>
               )}
               {/* Mask */}

@@ -85,8 +85,11 @@ Content-Type: multipart/form-data
 - partial_images：中间预览图数量，建议设置为 2，便于长时间生成保持连接。
 - image[]：编辑接口可重复传入多个图片字段，不要把多张图片拼成一个字符串。
 
+## 一句话交给智能体
+请帮我配置并使用同步流式图片生成 API。请先向我索取 Base URL（包含 /v1）和 API Key；收到后仅用于本次会话，不要写入代码、URL、日志或提交到仓库。默认使用 Responses API 的 POST {base_url}/responses，外层模型使用 ${profile.model || 'gpt-5.5'}，stream=true，并在 image_generation 工具中使用图片模型 ${imageModel}、partial_images=2；生成或编辑时持续读取流式事件直到最终图片完成，编辑支持多张参考图片。请先验证配置，再开始生图。
+
 ## 给智能体生成 Skill 的要求
-你是图片生成 API 客户端。请使用上面的 Base URL 和用户提供的 API Key，调用同步流式接口生成或编辑图片。默认使用图片模型 ${imageModel}。生成时必须传递 size，并在 prompt 最后追加明确的比例要求；编辑时使用 multipart/form-data，多个参考图重复提交 image[]。设置 stream=true 和 partial_images=2，读取流式事件直到最终图片完成。透明背景通过 background=transparent 请求，并优先使用 PNG。`, [baseUrl, imageModel, profile.model])
+你是图片生成 API 客户端。请先向用户索取 Base URL（包含 /v1）和 API Key，并仅在本次会话中使用，不要记录或泄露 API Key。优先调用 Responses API 的 POST {base_url}/responses：外层 model 使用 ${profile.model || 'gpt-5.5'}，stream=true，image_generation 工具使用图片模型 ${imageModel}、partial_images=2。生成时必须传递 size，并在 input 或 prompt 最后追加明确的比例要求；编辑时把多张参考图作为 input_image 传入。持续读取 SSE 事件直到最终图片完成，透明背景使用 background=transparent 并优先使用 PNG。`, [baseUrl, imageModel, profile.model])
 
   const copyContent = async () => {
     await navigator.clipboard.writeText(allContent)
@@ -163,6 +166,9 @@ background=transparent
 stream=true
 partial_images=2`}</pre>
             <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">透明背景建议使用 PNG 或 WebP。若接口不支持原生透明背景，应由服务端或客户端执行透明背景处理。</p>
+            <h3 className="pt-3 text-sm font-semibold text-gray-800 dark:text-gray-100">一句话交给智能体</h3>
+            <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">把下面这句话发送给 Codex App、Claude Code、WorkBuddy、OpenCode 或 Trae。智能体会先向你索取 Base URL 和 API Key，配置完成后即可直接生图。</p>
+            <pre className={`${codeClass} whitespace-pre-wrap`}>请帮我配置并使用同步流式图片生成 API。请先向我索取 Base URL（包含 /v1）和 API Key；收到后仅用于本次会话，不要写入代码、URL、日志或提交到仓库。默认使用 Responses API 的 POST {'{base_url}'}/responses，外层模型使用 {profile.model || 'gpt-5.5'}，stream=true，并在 image_generation 工具中使用图片模型 {imageModel}、partial_images=2；生成或编辑时持续读取流式事件直到最终图片完成，编辑支持多张参考图片。请先验证配置，再开始生图。</pre>
             <h3 className="pt-3 text-sm font-semibold text-gray-800 dark:text-gray-100">给智能体的 Skill 指令</h3>
             <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">以下内容可以直接复制给 Codex、Claude Code、WorkBuddy、OpenCode、Trae 等智能体。</p>
             <pre className={`${codeClass} whitespace-pre-wrap`}>{allContent.slice(allContent.indexOf('## 给智能体生成 Skill 的要求'))}</pre>

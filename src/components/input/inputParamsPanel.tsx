@@ -1,5 +1,6 @@
 import type { ApiProfile, TaskParams } from '../../types'
 import { dismissAllTooltips } from '../../lib/tooltipDismiss'
+import { DEFAULT_IMAGES_MODEL, GPT_IMAGE_MODEL_OPTIONS, getImageGenerationModel } from '../../lib/imageModels'
 import { isPresetConfigOnlyEnabled } from '../../lib/presetConfig'
 import Select from '../Select'
 import ButtonTooltip from './buttonTooltip'
@@ -52,6 +53,7 @@ export default function InputParamsPanel({
   sizeHint,
   qualityHint,
   onOpenSizePicker,
+  onImageModelChange,
 }: {
   cols: string
   params: TaskParams
@@ -92,8 +94,11 @@ export default function InputParamsPanel({
   sizeHint: HintTooltipState
   qualityHint: HintTooltipState
   onOpenSizePicker: () => void
+  onImageModelChange: (model: string) => void
 }) {
   const presetConfigOnly = isPresetConfigOnlyEnabled()
+  const showImageModelControl = activeProfile.provider === 'openai'
+  const imageModel = getImageGenerationModel(activeProfile) || DEFAULT_IMAGES_MODEL
 
   return (
     <div className={`grid ${cols} gap-2 text-xs flex-1`}>
@@ -121,6 +126,18 @@ export default function InputParamsPanel({
             : 'Codex CLI 不支持尺寸参数，此处设置仅基于提示词工程'}
         />
       </label>
+      {showImageModelControl && (
+        <label className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-gray-400 dark:text-gray-500 ml-1">图片模型</span>
+          <Select
+            value={imageModel}
+            onChange={(value) => onImageModelChange(String(value))}
+            options={[...GPT_IMAGE_MODEL_OPTIONS]}
+            showValueTooltips={false}
+            className={selectClass}
+          />
+        </label>
+      )}
       <label
         className="relative flex flex-col gap-0.5"
         onMouseEnter={qualityHint.show}

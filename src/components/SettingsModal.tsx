@@ -27,7 +27,6 @@ import {
   normalizeStreamPartialImages,
   switchApiProfileProvider,
 } from '../lib/apiProfiles'
-import { GPT_IMAGE_MODEL_OPTIONS } from '../lib/imageModels'
 import {
   getDefaultPresetBaseUrl,
   getDefaultPresetProfileId,
@@ -1546,26 +1545,6 @@ export default function SettingsModal() {
                 </div>
               </div>
 
-              {presetConfigOnly && (
-                <label className="block">
-                  <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">图片模型</span>
-                  <Select
-                    value={(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses'
-                      ? (activeProfile.imageGenerationModel || DEFAULT_IMAGES_MODEL)
-                      : activeProfile.model}
-                    onChange={(value) => updateActiveProfile(
-                      (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses'
-                        ? { imageGenerationModel: String(value) }
-                        : { model: String(value) },
-                      true,
-                    )}
-                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
-                    disabled={activeProfileLocked}
-                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                  />
-                </label>
-              )}
-
               {/* 6. API 接口（Images/Responses） */}
               {!presetConfigOnly && <>
               {activeProfile.provider === 'openai' && (
@@ -1591,29 +1570,19 @@ export default function SettingsModal() {
               )}
 
               {/* 7. 模型 ID（保持原有页面布局；Responses API 下为文本模型） */}
-              <label className="block">
+              {!(activeProfile.provider === 'openai' && (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'images') && <label className="block">
                 <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">
                   模型 ID
                 </span>
-                {activeProfile.provider === 'openai' && (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'images' ? (
-                  <Select
-                    value={activeProfile.model}
-                    onChange={(value) => updateActiveProfile({ model: String(value) }, true)}
-                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
-                    disabled={activeProfileLocked}
-                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                  />
-                ) : (
-                  <input
-                    value={activeProfile.model}
-                    onChange={(e) => updateActiveProfile({ model: e.target.value })}
-                    onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
-                    type="text"
-                    disabled={activeProfileLocked}
-                    placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
-                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                  />
-                )}
+                <input
+                  value={activeProfile.model}
+                  onChange={(e) => updateActiveProfile({ model: e.target.value })}
+                  onBlur={(e) => commitActiveProfilePatch({ model: e.target.value })}
+                  type="text"
+                  disabled={activeProfileLocked}
+                  placeholder={activeProfile.provider === 'fal' ? DEFAULT_FAL_MODEL : getDefaultModelForMode(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode)}
+                  className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
+                />
                   <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
                   {activeProfile.provider === 'fal' ? (
                     <>
@@ -1626,30 +1595,13 @@ export default function SettingsModal() {
                   ) : (activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses' ? (
                     <>Responses API 需要使用支持 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">image_generation</code> 工具的文本模型，例如 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">{DEFAULT_RESPONSES_MODEL}</code>。</>
                   ) : (
-                    <>Images API 使用上方选择的图片模型。</>
+                    <>Images API 使用输入栏中的图片模型选择。</>
                   )}
                   {activeProfile.provider === 'openai' && (
                     <>支持通过查询参数覆盖：<code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">?model=</code>。</>
                   )}
                 </div>
-              </label>
-
-              {activeProfile.provider === 'openai' && activeProfile.apiMode === 'responses' && (
-                <label className="block">
-                  <span className="mb-1.5 block text-sm text-gray-600 dark:text-gray-300">图像生成模型</span>
-                  <Select
-                    value={activeProfile.imageGenerationModel || DEFAULT_IMAGES_MODEL}
-                    onChange={(value) => updateActiveProfile({ imageGenerationModel: String(value) }, true)}
-                    options={[...GPT_IMAGE_MODEL_OPTIONS]}
-                    disabled={activeProfileLocked}
-                    className="w-full rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-gray-200 dark:focus:border-blue-500/50"
-                  />
-                  <div data-selectable-text className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
-                    Responses API 通过 <code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">image_generation</code> 工具使用上方选择的图片模型。
-                    支持通过查询参数覆盖：<code className="rounded bg-gray-100 px-1 py-0.5 dark:bg-white/[0.06]">?imageGenerationModel=</code>。
-                  </div>
-                </label>
-              )}
+              </label>}
 
               {(activeProfile.apiMode ?? DEFAULT_SETTINGS.apiMode) === 'responses' && activeProfile.provider === 'openai' && (
                 <div className="block">

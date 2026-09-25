@@ -68,6 +68,7 @@ import { ALL_FAVORITES_COLLECTION_ID, DEFAULT_FAVORITE_COLLECTION_ID, createDefa
 import { createPersistedState, mergePersistedAgentConversations, migratePersistedState, normalizePersistedState } from './lib/persistedState'
 import { addImageSizeParam, createTaskDonePatch, createTaskErrorPatch, deriveAgentImageActualParams, deriveGalleryActualParams, firstActualParams, hasActualParams, hasActualSizeParam, mapActualParamsByImage, mapRevisedPromptsByImage, markInterruptedOpenAIRunningTasks } from './lib/taskState'
 import { stripInjectedCodexCliSizePrompt } from './lib/size'
+import { getImageGenerationModel } from './lib/imageModels'
 
 const FAL_RECOVERY_POLL_MS = 10_000
 const CUSTOM_RECOVERY_POLL_MS = 10_000
@@ -1736,6 +1737,7 @@ export async function submitTask(options: { allowFullMask?: boolean; useCurrentA
     apiProfileName: activeProfile.name,
     apiMode: activeProfile.apiMode,
     apiModel: activeProfile.model,
+    imageGenerationModel: getImageGenerationModel(activeProfile),
     inputImageIds: orderedInputImages.map((i) => i.id),
     maskTargetImageId,
     maskImageId,
@@ -2647,6 +2649,7 @@ async function executeAgentRound(
         apiProfileName: imageProfile.name,
         apiMode: imageProfile.apiMode,
         apiModel: imageProfile.model,
+        imageGenerationModel: getImageGenerationModel(imageProfile),
         inputImageIds,
         maskTargetImageId: options.maskTargetImageId !== undefined ? options.maskTargetImageId : round.maskTargetImageId ?? null,
         maskImageId: options.maskImageId !== undefined ? options.maskImageId : round.maskImageId ?? null,
@@ -3229,6 +3232,7 @@ async function executeAgentRound(
           apiProfileName: imageProfile.name,
           apiMode: imageProfile.apiMode,
           apiModel: imageProfile.model,
+          imageGenerationModel: getImageGenerationModel(imageProfile),
           inputImageIds: uniqueIds([...(round?.inputImageIds ?? []), ...promptRefs.imageIds]),
           maskTargetImageId: round?.maskTargetImageId ?? null,
           maskImageId: round?.maskImageId ?? null,
@@ -3828,6 +3832,7 @@ export async function retryTask(task: TaskRecord) {
     apiProfileName: activeProfile.name,
     apiMode: activeProfile.apiMode,
     apiModel: activeProfile.model,
+    imageGenerationModel: getImageGenerationModel(activeProfile),
     inputImageIds: [...task.inputImageIds],
     maskTargetImageId: task.maskTargetImageId ?? null,
     maskImageId: task.maskImageId ?? null,
